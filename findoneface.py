@@ -2,7 +2,9 @@ import logging
 logging.getLogger('').setLevel(logging.DEBUG)
 
 from picamera import PiCamera
+RESOLUTION = (640, 480)
 
+ZONES=(4,3)
 # Import the packages we need for drawing and displaying images
 from PIL import Image
 import cv2
@@ -14,7 +16,17 @@ cascade = cv2.CascadeClassifier(CASCADE_PATH)
 import io
 import sys
 
-RESOLUTION = (640, 480)
+def findZone(point):
+    logging.debug("point[{}][{}]".format(point[0],point[1]))
+    for x in range(ZONES[0]-1,-1,-1):
+        x_boundary=(RESOLUTION[0]/ZONES[0]*(x+1))
+        for y in range(ZONES[1]-1,-1,-1):
+            y_boundary=(RESOLUTION[1]/ZONES[1]*(y+1))
+            logging.debug("[{}][{}] is [{}][{}]".format(x,y,x_boundary,y_boundary))
+            if point[0]<x_boundary and point[1]<y_boundary:
+                logging.debug("zone[{}][{}]".format(x_boundary,y_boundary))
+                return (x,y)
+            
 
 def getCamera():
     camera = PiCamera()
@@ -53,8 +65,16 @@ def findOneFace(faces):
             max_face_area = face_area
             max_face = (x, y, w, h)
     logging.debug("Largest face:{} area:{}".format(max_face, max_face_area))
+    return max_face
 
+if __name__ == '__main__':
+    logging.info("finding a face")
     camera = getCamera()
-    rgb_image = captureImage(camera)
-    faces = findFaces(rgb_image)
-    face = findOneFace(faces)
+    while True:
+        rgb_image = captureImage(camera)
+        faces = findFaces(rgb_image)
+        face = findOneFace(faces)
+        if face:
+            face_center = (face[0]+(face[2]/2), face[1]+(face[3]/2))
+            face_zone = findZone(face_center)
+            logging.debug("face is in zone[{}][{}]".format(face_zone[0], face_zone[1]))
