@@ -1,5 +1,6 @@
 import logging
-logging.getLogger('').setLevel(logging.DEBUG)
+logging.getLogger('').setLevel(logging.INFO)
+_DEBUG=False
 
 from picamera import PiCamera
 RESOLUTION = (640, 480)
@@ -18,9 +19,9 @@ import sys
 
 def findZone(point):
     logging.debug("point[{}][{}]".format(point[0],point[1]))
-    for x in range(ZONES[0]-1,-1,-1):
+    for x in range(ZONES[0]):
         x_boundary=(RESOLUTION[0]/ZONES[0]*(x+1))
-        for y in range(ZONES[1]-1,-1,-1):
+        for y in range(ZONES[1]):
             y_boundary=(RESOLUTION[1]/ZONES[1]*(y+1))
             logging.debug("[{}][{}] is [{}][{}]".format(x,y,x_boundary,y_boundary))
             if point[0]<x_boundary and point[1]<y_boundary:
@@ -31,7 +32,7 @@ def findZone(point):
 def getCamera():
     camera = PiCamera()
     camera.resolution = RESOLUTION
-    camera.vflip = True
+    camera.vflip = False
     return camera
 
 def captureImage(camera):
@@ -53,7 +54,7 @@ def findFaces(image):
         minSize=(30, 30),
         flags = cv2.cv.CV_HAAR_SCALE_IMAGE
     )
-    logging.debug("Found {0} faces!".format(len(faces)))
+    if len(faces): logging.info("Found {0} faces!".format(len(faces)))
     return faces
 
 def findOneFace(faces):
@@ -67,14 +68,18 @@ def findOneFace(faces):
     logging.debug("Largest face:{} area:{}".format(max_face, max_face_area))
     return max_face
 
+def showImage(image):
+    image.show()
+
 if __name__ == '__main__':
     logging.info("finding a face")
     camera = getCamera()
     while True:
         rgb_image = captureImage(camera)
+        if _DEBUG: showImage(rgb_image)
         faces = findFaces(rgb_image)
         face = findOneFace(faces)
         if face:
             face_center = (face[0]+(face[2]/2), face[1]+(face[3]/2))
             face_zone = findZone(face_center)
-            logging.debug("face is in zone[{}][{}]".format(face_zone[0], face_zone[1]))
+            logging.info("face is in zone[{}][{}]".format(face_zone[0], face_zone[1]))
