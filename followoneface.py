@@ -7,6 +7,8 @@ RESOLUTION = (640, 480)
 
 CAPTURE_RATE_FPS = 2
 
+SLEEPY_DELAY_SECS = 3
+
 ZONES=(4,3)
 # Import the packages we need for drawing and displaying images
 from PIL import Image
@@ -99,11 +101,25 @@ def findOneFace(faces):
 def showImage(image):
     image.show()
 
+def lookAt(zone):
+    if zone[0] == 0:
+        drawImage(LOOK_RIGHT)
+    elif zone[0] == 3:
+        drawImage(LOOK_LEFT)
+    if zone[1] == 0:
+        drawImage(LOOK_UP)
+    elif zone[1] == 2:
+        drawImage(LOOK_DOWN)
+    else:
+        drawImage(LOOK_HAPPY)
+
 if __name__ == '__main__':
     logging.info("finding a face")
     camera = getCamera()
     frame_delay_secs = 1.0/CAPTURE_RATE_FPS
     rgb_image = captureImage(camera)
+    point_zone = (1,1)
+    last_motion_at = 0l
     while True:
         delay = (last_frame_at + frame_delay_secs) - time.time()
         if delay > 0:
@@ -114,10 +130,35 @@ if __name__ == '__main__':
         if _DEBUG: showImage(rgb_image)
         motion = self.calculateImageDifference(prev_image, rgb_image)
         if motion < motion_threshold:
+            if time.time() < (last_motion_at + SLEEPY_DELAY_SECS):
+                drawImage(LOOK_SLEEPY)
             continue
+        last_motion_at = time.time()
         faces = findFaces(rgb_image)
         face = findOneFace(faces)
-        if face:
-            face_center = (face[0]+(face[2]/2), face[1]+(face[3]/2))
-            face_zone = findZone(face_center)
-            logging.info("face is in zone[{}][{}]".format(face_zone[0], face_zone[1]))
+        if not face:
+            logging.debug("no face seen")
+            drawImage(LOOK_LONELY)
+            continue
+        face_center = (face[0]+(face[2]/2), face[1]+(face[3]/2))
+        face_zone = findZone(face_center)
+        logging.info("face is in zone[{}][{}]".format(face_zone[0], face_zone[1]))
+        # if we're not at the end of the servo's range, turn towards the face
+        reposition_face = False
+        if point_zone[0] > 0 and point_zone[0] < 3:
+            if face_zone[0] == 0:
+                point_zone[0] -= 1
+                reposition_face = True
+            elif face_zone[0] == 3:
+                point_zone[0] += 1
+                reposition_face = True
+        if point_zone[1] > 0 and point_zone[1] < 2:
+            if face_zone[1] == 0:
+                point_zone[1] -= 1
+                reposition_face = True
+            elif face_zone[1] == 2:
+                point_zone[1] += 1
+                reposition_face = True
+        lookAt(face_zone)
+        if reposition_face:
+            pointFace(point_zone)
