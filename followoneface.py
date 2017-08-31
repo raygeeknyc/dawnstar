@@ -136,7 +136,13 @@ def turnAndFaceZone(point_zone, face_zone):
     lookAt(face_zone)
     if reposition_face:
         pointFace(point_zone)
-    return point_zone
+        return point_zone
+    else:
+        return None
+
+def pointFace(point_zone):
+    x = point_zone[0]
+    y = point_zone[1]
 
 if __name__ == '__main__':
     logging.info("finding a face")
@@ -145,6 +151,7 @@ if __name__ == '__main__':
     rgb_image = captureImage(camera)
     point_zone = (1,1)
     last_motion_at = 0l
+    just_moved = False
     while True:
         delay = (last_frame_at + frame_delay_secs) - time.time()
         if delay > 0:
@@ -153,6 +160,9 @@ if __name__ == '__main__':
         rgb_image = captureImage(camera)
         last_frame_at = time.time()
         if _DEBUG: showImage(rgb_image)
+        if just_moved:
+            just_moved = False
+            continue
         motion = self.calculateImageDifference(prev_image, rgb_image)
         if motion < motion_threshold:
             if time.time() < (last_motion_at + SLEEPY_DELAY_SECS):
@@ -168,4 +178,7 @@ if __name__ == '__main__':
         face_center = (face[0]+(face[2]/2), face[1]+(face[3]/2))
         face_zone = findZone(face_center)
         logging.info("face is in zone[{}][{}]".format(face_zone[0], face_zone[1]))
-        point_zone = turnAndFaceZone(point_zone, face_zone)
+        new_point_zone = turnAndFaceZone(point_zone, face_zone)
+        if new_point_zone:
+            point_zone = new_point_zone
+            just_moved = True
