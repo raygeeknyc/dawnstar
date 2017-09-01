@@ -1,8 +1,13 @@
-width = disp.width
-height = disp.height
+WIDTH = disp.width
+HEIGHT = disp.height
 image = Image.new('1', (width, height))
-diameter = 10
-iris_diameter = 3
+EYE_DIAMETER = 10
+IRIS_DIAMETER = 3
+EYE_TOP = 10
+RIGHT_EYE_LEFT = 128-21-EYE_DIAMETER
+LEFT_EYE_LEFT = 21
+MOUTH_LEFT = LEFT_EYE_LEFT + EYE_DIAMETER/2
+MOUTH_RIGHT = RIGHT_EYE_LEFT - EYE_DIAMETER/2
 
 def getDrawing(display):
     width = display.width
@@ -32,3 +37,5 @@ def drawEyeLookingDown(drawing, top_left, diameter, iris_diameter):
     drawing.ellipse(x+diameter/2-iris_diameter/2, y+diameter-2-iris_diameter, (x+diameter/2-iris_diameter/2)+iris_diameter, y+diameter-2), outline=255, fill=255)
 
 def face_looking_right(drawing):
+    drawEyeLookingRight(drawing, (right_eye_left, eye_top), EYE_DIAMETER, IRIS_DIAMETER)
+    drawEyeLookingRight(drawing, (left_eye_left, eye_top), EYE_DIAMETER, IRIS_DIAMETER)
