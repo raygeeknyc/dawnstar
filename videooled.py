@@ -1,6 +1,4 @@
 import time
-import numpy
-import cv2
 import io
 import sys
 import logging
@@ -13,7 +11,7 @@ import Adafruit_SSD1306
 
 from PIL import Image
 
-RESOLUTION = (600, 400)
+RESOLUTION = (160, 100)
 
 RST = 24
 DC = 23
@@ -32,19 +30,28 @@ disp.clear()
 disp.display()
 
 try:
+    frame_count = 0
+    fps = 0
+    last_report_at = time.time()
+    last_start = time.time()
     while True:
         image_buffer.seek(0)
         camera.capture(image_buffer, format="jpeg")
         image_buffer.seek(0)
-        pil_image = Image.open(image_buffer)
-        cv2_image = numpy.array(pil_image)
-        cv2_image = cv2.cvtColor(cv2_image, cv2.COLOR_RGB2GRAY)
-        (thresh, cv2_image) = cv2.threshold(cv2_image, 128, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
-        cv2_image = cv2.resize(cv2_image, (disp.width, disp.height))
-
-        display_image = Image.fromarray(cv2_image).convert('1')
+        display_image = Image.open(image_buffer).resize((disp.width, disp.height), Image.ANTIALIAS).convert('1')
         disp.image(display_image)
         disp.display()
+        frame_frequency = time.time() - last_start
+        last_start = time.time()
+        frame_rate = 1/frame_frequency
+        fps += frame_rate
+        frame_count += 1
+        if last_start - last_report_at >= 1.0:
+            fps /= frame_count
+            frame_count = 0
+            logging.debug("frame rate: {} fps".format(fps))
+            fps = 0
+            last_report_at = last_start 
 except KeyboardInterrupt:
         logging.info("interrupted, exiting")
         camera.close()
