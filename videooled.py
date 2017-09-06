@@ -35,12 +35,16 @@ try:
     last_report_at = time.time()
     last_start = time.time()
     while True:
+        s = time.time()
         image_buffer.seek(0)
         camera.capture(image_buffer, format="jpeg")
         image_buffer.seek(0)
         display_image = Image.open(image_buffer).resize((disp.width, disp.height), Image.ANTIALIAS).convert('1')
+        logging.debug("Image processing took {}".format(time.time()-s))
+        s = time.time()
         disp.image(display_image)
         disp.display()
+        logging.debug("Display took {}".format(time.time()-s))
         frame_frequency = time.time() - last_start
         last_start = time.time()
         frame_rate = 1/frame_frequency
@@ -49,7 +53,7 @@ try:
         if last_start - last_report_at >= 1.0:
             fps /= frame_count
             frame_count = 0
-            logging.debug("frame rate: {} fps".format(fps))
+            logging.info("frame rate: {} fps".format(fps))
             fps = 0
             last_report_at = last_start 
 except KeyboardInterrupt:
