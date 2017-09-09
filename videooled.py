@@ -2,7 +2,7 @@ import time
 import io
 import sys
 import logging
-logging.getLogger().setLevel(logging.DEBUG)
+logging.getLogger().setLevel(logging.INFO)
 
 from picamera import PiCamera
 
@@ -35,10 +35,12 @@ try:
     last_report_at = time.time()
     last_start = time.time()
     while True:
-        s = time.time()
         image_buffer.seek(0)
+        s = time.time()
         try:
             camera.capture(image_buffer, format="jpeg")
+            logging.debug("Camera capture took {}".format(time.time()-s))
+            s = time.time()
         except Exception, e:
             logging.exception("Error capturing image")
             time.sleep(CAMERA_ERROR_DELAY_SECS)
