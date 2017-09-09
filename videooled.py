@@ -12,7 +12,7 @@ import Adafruit_SSD1306
 from PIL import Image
 
 RESOLUTION = (160, 100)
-
+CAMERA_ERROR_DELAY_SECS = 1
 RST = 24
 DC = 23
 SPI_PORT = 0
@@ -36,7 +36,12 @@ try:
     last_start = time.time()
     while True:
         image_buffer.seek(0)
-        camera.capture(image_buffer, format="jpeg")
+        try:
+            camera.capture(image_buffer, format="jpeg")
+        except Exception, e:
+            logging.exception("Error capturing image")
+            time.sleep(CAMERA_ERROR_DELAY_SECS)
+            continue
         image_buffer.seek(0)
         display_image = Image.open(image_buffer).resize((disp.width, disp.height), Image.ANTIALIAS).convert('1')
         disp.image(display_image)
