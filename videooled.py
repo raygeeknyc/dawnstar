@@ -2,8 +2,8 @@ import time
 import io
 import sys
 import logging
-logging.getLogger().setLevel(logging.INFO)
 logging.getLogger().setLevel(logging.DEBUG)
+logging.getLogger().setLevel(logging.INFO)
 
 from picamera import PiCamera
 
@@ -35,19 +35,19 @@ try:
     fps = 0
     last_report_at = time.time()
     last_start = time.time()
-    while True:
-        image_buffer.seek(0)
-        s = time.time()
+    s = time.time()
+    for _ in camera.capture_continuous(image_buffer, format='jpeg', use_video_port=True):
         try:
-            camera.capture(image_buffer, format="jpeg")
+            image_buffer.truncate()
+            image_buffer.seek(0)
             logging.debug("Camera capture took {}".format(time.time()-s))
             s = time.time()
         except Exception, e:
             logging.exception("Error capturing image")
             time.sleep(CAMERA_ERROR_DELAY_SECS)
             continue
-        image_buffer.seek(0)
         display_image = Image.open(image_buffer).resize((disp.width, disp.height), Image.ANTIALIAS).convert('1')
+        image_buffer.seek(0)
         logging.debug("Image processing took {}".format(time.time()-s))
         s = time.time()
         disp.image(display_image)
@@ -64,6 +64,7 @@ try:
             logging.info("frame rate: {} fps".format(fps))
             fps = 0
             last_report_at = last_start 
+        s = time.time()
 except KeyboardInterrupt:
         logging.info("interrupted, exiting")
         camera.close()
