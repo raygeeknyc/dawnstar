@@ -3,11 +3,37 @@
 # sudo apt-get install pigpio python-pigpio python3-pigpio
 #
 
+# Describe our geometry
+COLS = 4
+ROWS = 3
+
+# Describe our hardware setup
+PAN_PIN = 20
+TILT_PIN = 21
+
+# Servo dependent values
+X_MIN = 0
+X_MAX = 160
+Y_MIN = 0
+Y_MAX = 160
+_COL_SPAN = (X_MAX - X_MIN)
+_ROW_SPAN = (Y_MAX - Y_MIN)
+
+def positionTo(zone):
+    col, row = zone
+    logging.debug("point to ({},{}) of [{},{}]".format(col,row,COLS,ROWS))
+    pan(X_MIN + _COL_SPAN / COLS * (col + 0.5))
+    tilt(Y_MIN + _ROW_SPAN / ROWS * (row + 0.5))
+
+def pan(value):
+    pass
+
+def tilt(value):
+    pass
+
 import pigpio
 import time
 
-PAN_PIN = 20
-TILT_PIN = 21
 pi = pigpio.pi()
 pi.set_mode(PAN_PIN, pigpio.OUTPUT)
 pi.set_mode(TILT_PIN, pigpio.OUTPUT)
