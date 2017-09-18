@@ -6,16 +6,18 @@
 # Describe our geometry
 COLS = 4
 ROWS = 3
+DIMENSIONS=(COLS, ROWS)
 
-# Describe our hardware setup
+# Describe our hardware setup, pin numbers are BCM indices
 PAN_PIN = 20
 TILT_PIN = 21
 
 # Servo dependent values
-X_MIN = 0
-X_MAX = 160
-Y_MIN = 0
-Y_MAX = 160
+X_MIN = 1100
+X_MAX = 1900
+Y_MIN = 1100
+Y_MAX = 1900
+SERVO_DURATION_STEP = 100
 _COL_SPAN = (X_MAX - X_MIN)
 _ROW_SPAN = (Y_MAX - Y_MIN)
 
@@ -25,15 +27,16 @@ def positionTo(zone):
     pan(X_MIN + _COL_SPAN / COLS * (col + 0.5))
     tilt(Y_MIN + _ROW_SPAN / ROWS * (row + 0.5))
 
-def pan(value):
-    pass
+def pan(duration):
+    servo_write(PAN_PIN, duration)
 
-def tilt(value):
-    pass
+def tilt(duration):
+    servo_write(TILT_PIN, duration)
 
-import pigpio
-import time
-
+def servo_write(pin, duration):
+    actual_duration = int(duration/SERVO_DURATION_STEP)*SERVO_DURATION_STEP
+    pi.set_servo_pulsewidth(pin, actual_duration)
+    
 pi = pigpio.pi()
 pi.set_mode(PAN_PIN, pigpio.OUTPUT)
 pi.set_mode(TILT_PIN, pigpio.OUTPUT)
@@ -49,14 +52,19 @@ print("set to: ",pi.get_servo_pulsewidth(TILT_PIN))
 
 time.sleep(1)
 
-print("Tilt setting to: ",pi.set_servo_pulsewidth(TILT_PIN, 1000))
+print("Tilt setting to: ",pi.set_servo_pulsewidth(TILT_PIN, 1100))
 print("set to: ",pi.get_servo_pulsewidth(TILT_PIN))
 
-print("Pan setting to: ",pi.set_servo_pulsewidth(PAN_PIN, 1000))
+time.sleep(1)
+print("Pan setting to: ",pi.set_servo_pulsewidth(PAN_PIN, 1100))
 print("set to: ",pi.get_servo_pulsewidth(PAN_PIN))
 
 time.sleep(1)
-print("Pan setting to: ",pi.set_servo_pulsewidth(PAN_PIN, 2000))
+print("Tilt setting to: ",pi.set_servo_pulsewidth(TILT_PIN, 1900))
+print("set to: ",pi.get_servo_pulsewidth(TILT_PIN))
+
+time.sleep(1)
+print("Pan setting to: ",pi.set_servo_pulsewidth(PAN_PIN, 1900))
 print("set to: ",pi.get_servo_pulsewidth(PAN_PIN))
 
 
