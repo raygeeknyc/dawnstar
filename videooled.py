@@ -2,28 +2,26 @@ import time
 import io
 import sys
 import logging
-logging.getLogger().setLevel(logging.DEBUG)
 logging.getLogger().setLevel(logging.INFO)
+import numpy
+import cv2
 
 from picamera import PiCamera
 
-import Adafruit_GPIO.SPI as SPI
 import Adafruit_SSD1306
 
 from PIL import Image
 
 RESOLUTION = (160, 100)
 CAMERA_ERROR_DELAY_SECS = 1
-RST = 24
-DC = 23
-SPI_PORT = 0
-SPI_DEVICE = 0
 
-disp = Adafruit_SSD1306.SSD1306_128_64(rst=RST, dc=DC, spi=SPI.SpiDev(SPI_PORT, SPI_DEVICE, max_speed_hz=8000000))
+RST=24
+# 128x64 display with hardware I2C:
+disp = Adafruit_SSD1306.SSD1306_128_64(rst=RST)
 
 camera = PiCamera()
 camera.resolution = RESOLUTION
-camera.vflip = False
+camera.vflip = True  # Our camera is not flipped but our display is
 image_buffer = io.BytesIO()
 
 disp.begin()
@@ -46,7 +44,13 @@ try:
             logging.exception("Error capturing image")
             time.sleep(CAMERA_ERROR_DELAY_SECS)
             continue
-        display_image = Image.open(image_buffer).resize((disp.width, disp.height), Image.ANTIALIAS).convert('1')
+        display_image = Image.open(image_buffer)
+        cv2_image = numpy.array(display_image)
+        cv2_image = cv2.cvtColor(cv2_image, cv2.COLOR_RGB2GRAY)
+        cv2_image = cv2.equalizeHist(cv2_image)
+        #(thresh, cv2_image) = cv2.threshold(cv2_image, 128, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)  # too high contrast
+        cv2_image = cv2.resize(cv2_image, (disp.width, disp.height))
+        display_image = Image.fromarray(cv2_image).convert('1')
         image_buffer.seek(0)
         logging.debug("Image processing took {}".format(time.time()-s))
         s = time.time()
