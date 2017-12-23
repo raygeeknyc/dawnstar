@@ -3,7 +3,12 @@
 # sudo apt-get install pigpio python-pigpio python3-pigpio
 #
 import logging
+import time
+
+import pigpio
 logging.getLogger().setLevel(logging.DEBUG)
+
+pi = pigpio.pi()
 
 # Describe our geometry
 COLS = 4
@@ -11,17 +16,28 @@ ROWS = 3
 DIMENSIONS=(COLS, ROWS)
 
 # Describe our hardware setup, pin numbers are BCM indices
-PAN_PIN = 20
-TILT_PIN = 21
+PAN_PIN = 14
+TILT_PIN = 15
 
 # Servo dependent values
-X_MIN = 1000
-X_MAX = 2000
-Y_MIN = 1000
-Y_MAX = 2000
-SERVO_DURATION_STEP = 100
-_COL_SPAN = (X_MAX - X_MIN)
-_ROW_SPAN = (Y_MAX - Y_MIN)
+PULSE_MIN = 900
+PULSE_MAX = 1900
+PULSE_STEP = 100
+_PULSE_RANGE = PULSE_MAX + 1 - PULSE_MIN
+logging.debug("pulses: {}".format(_PULSE_RANGE))
+
+DEGREE_MIN = 0
+DEGREE_MAX = 110
+_DEGREE_RANGE = DEGREE_MAX + 1 - DEGREE_MIN
+logging.debug("degrees: {}".format(_DEGREE_RANGE))
+
+def getPulseForDegrees(degrees):
+  pulse = int(PULSE_MIN+(((degrees - DEGREE_MIN)*1.0 / _DEGREE_RANGE
+    * _PULSE_RANGE) + 1) // PULSE_STEP * PULSE_STEP)
+  pulse = max(pulse, PULSE_MIN)
+  pulse = min(pulse, PULSE_MAX)
+  logging.debug("degree {} is pulse {}".format(degrees, pulse))
+  return pulse
 
 def positionTo(zone):
     col, row = zone
@@ -29,47 +45,34 @@ def positionTo(zone):
     pan(X_MIN + _COL_SPAN / COLS * (col + 0.5))
     tilt(Y_MIN + _ROW_SPAN / ROWS * (row + 0.5))
 
-def pan(duration):
-    servo_write(PAN_PIN, duration)
+def pan(degrees):
+    servo_write(PAN_PIN, degrees)
 
-def tilt(duration):
-    servo_write(TILT_PIN, duration)
+def tilt(degrees):
+    servo_write(TILT_PIN, degrees)
 
-def servo_write(pin, duration):
-    actual_duration = int(duration/SERVO_DURATION_STEP)*SERVO_DURATION_STEP
-    logging.debug("setting pin {} to pulsewidth {}".format(pin, actual_duration))
-    return
-    pi.set_servo_pulsewidth(pin, actual_duration)
+def servo_write(pin, degrees):
+    pi.set_servo_pulsewidth(pin, getPulseForDegrees(degrees))
     
 def demo():
-    pi = pigpio.pi()
+    logging.debug("Connecting to pigpio daemon")
+    logging.debug("Connected")
     pi.set_mode(PAN_PIN, pigpio.OUTPUT)
     pi.set_mode(TILT_PIN, pigpio.OUTPUT)
 
-    print ("Pan mode: ", pi.get_mode(PAN_PIN))
-    print("setting to: ",pi.set_servo_pulsewidth(PAN_PIN, 1500))
-    print("set to: ",pi.get_servo_pulsewidth(PAN_PIN))
-
-    time.sleep(1)
-    print ("Tilt mode: ", pi.get_mode(TILT_PIN))
-    print("setting to: ",pi.set_servo_pulsewidth(TILT_PIN, 1500))
-    print("set to: ",pi.get_servo_pulsewidth(TILT_PIN))
-
-    time.sleep(1)
-    print("Tilt setting to: ",pi.set_servo_pulsewidth(TILT_PIN, 1100))
-    print("set to: ",pi.get_servo_pulsewidth(TILT_PIN))
-
-    time.sleep(1)
-    print("Pan setting to: ",pi.set_servo_pulsewidth(PAN_PIN, 1100))
-    print("set to: ",pi.get_servo_pulsewidth(PAN_PIN))
-
-    time.sleep(1)
-    print("Tilt setting to: ",pi.set_servo_pulsewidth(TILT_PIN, 1900))
-    print("set to: ",pi.get_servo_pulsewidth(TILT_PIN))
-
-    time.sleep(1)
-    print("Pan setting to: ",pi.set_servo_pulsewidth(PAN_PIN, 1900))
-    print("set to: ",pi.get_servo_pulsewidth(PAN_PIN))
-
-    time.sleep(1)
+    tilt(0)
+    time.sleep(2)
+    tilt(10)
+    for x in range(DEGREE_MIN, DEGREE_MAX, 10):
+      pan(x)
+      time.sleep(0.2)
+    tilt(90)
+    for x in range(DEGREE_MAX, DEGREE_MIN, -10):
+      pan(x)
+      time.sleep(0.2)
+    tilt(40)
+    pan(60)
     pi.stop()
+
+
+demo()
