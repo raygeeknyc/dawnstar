@@ -35,10 +35,18 @@ def getPulseForDegrees(degrees):
   return pulse
 
 def panToPercentage(percent):
-  pan((100.0/percent) * _DEGREE_RANGE + DEGREE_MIN)
+  logging.debug("panning to {} percent".format(percent))
+  if percent == 0:
+    panToDegrees(DEGREE_MIN)
+  else:
+    panToDegrees((percent/100.0) * _DEGREE_RANGE + DEGREE_MIN)
 
 def tiltToPercentage(percent):
-  tilt((100.0/percent) * _DEGREE_RANGE + DEGREE_MIN)
+  logging.debug("tilting to {} percent".format(percent))
+  if percent == 0:
+    tiltToDegrees(DEGREE_MIN)
+  else:
+    tiltToDegrees((percent/100.0) * _DEGREE_RANGE + DEGREE_MIN)
 
 def panToDegrees(degrees):
     servo_write(PAN_PIN, degrees)
@@ -58,7 +66,7 @@ def demo():
     tiltToPercentage(0)
     time.sleep(2)
     tiltToPercentage(20)
-    for x in range(10,100,10)
+    for x in range(10, 100, 10):
       panToPercentage(x)
       time.sleep(0.2)
     tiltToPercentage(50)
@@ -68,6 +76,5 @@ def demo():
     tiltToPercentage(50)
     panToPercentage(50)
     pi.stop()
-
 
 demo()
