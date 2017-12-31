@@ -78,3 +78,4 @@ def demo():
     pi.stop()
 
 demo()
+logging.debug("Done")
