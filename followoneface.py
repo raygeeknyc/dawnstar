@@ -6,12 +6,7 @@ from picamera import PiCamera
 RESOLUTION = (640, 480)
 
 CAPTURE_RATE_FPS = 2
-
 SLEEPY_DELAY_SECS = 3
-
-ROWS=3
-COLS=4
-ZONES=(COLS, ROWS)
 
 # Import the packages we need for drawing and displaying images
 from PIL import Image
@@ -49,18 +44,6 @@ def trainMotion(camera):
         self._camera.stop_preview()
     logging.debug("Trained motion threshold is {}".format(motion_threshold))
     return motion_threshold
-
-def findZone(point):
-    logging.debug("point[{}][{}]".format(point[0],point[1]))
-    for x in range(ZONES[0]):
-        x_boundary=(RESOLUTION[0]/ZONES[0]*(x+1))
-        for y in range(ZONES[1]):
-            y_boundary=(RESOLUTION[1]/ZONES[1]*(y+1))
-            logging.debug("[{}][{}] is [{}][{}]".format(x,y,x_boundary,y_boundary))
-            if point[0]<x_boundary and point[1]<y_boundary:
-                logging.debug("zone[{}][{}]".format(x_boundary,y_boundary))
-                return (x,y)
-            
 
 def getCamera():
     camera = PiCamera()
@@ -104,52 +87,11 @@ def findOneFace(faces):
 def showImage(image):
     image.show()
 
-def lookAt(zone):
-    if zone[0] == 0:
-        drawImage(LOOK_RIGHT)
-    elif zone[0] == COLS-1:
-        drawImage(LOOK_LEFT)
-    if zone[1] == 0:
-        drawImage(LOOK_UP)
-    elif zone[1] == ROWS-1:
-        drawImage(LOOK_DOWN)
-    else:
-        drawImage(LOOK_HAPPY)
-
-def turnAndFaceZone(point_zone, face_zone):
-    # if we're not at the end of the servo's range, turn towards the face
-    reposition_face = False
-    if point_zone[0] > 0 and point_zone[0] < COLS-1:
-        if face_zone[0] == 0:
-            point_zone[0] -= 1
-            reposition_face = True
-        elif face_zone[0] == COLS-1:
-            point_zone[0] += 1
-            reposition_face = True
-    if point_zone[1] > 0 and point_zone[1] < ROWS-1:
-        if face_zone[1] == 0:
-            point_zone[1] -= 1
-            reposition_face = True
-        elif face_zone[1] == ROWS-1:
-            point_zone[1] += 1
-            reposition_face = True
-    lookAt(face_zone)
-    if reposition_face:
-        pointFace(point_zone)
-        return point_zone
-    else:
-        return None
-
-def pointFace(point_zone):
-    x = point_zone[0]
-    y = point_zone[1]
-
 if __name__ == '__main__':
     logging.info("finding a face")
     camera = getCamera()
     frame_delay_secs = 1.0/CAPTURE_RATE_FPS
     rgb_image = captureImage(camera)
-    point_zone = (1,1)
     last_motion_at = 0l
     just_moved = False
     while True:
@@ -166,19 +108,13 @@ if __name__ == '__main__':
         motion = self.calculateImageDifference(prev_image, rgb_image)
         if motion < motion_threshold:
             if time.time() < (last_motion_at + SLEEPY_DELAY_SECS):
-                drawImage(LOOK_SLEEPY)
+                pass  # indicate that we're bored or sleeping
             continue
         last_motion_at = time.time()
         faces = findFaces(rgb_image)
         face = findOneFace(faces)
         if not face:
             logging.debug("no face seen")
-            drawImage(LOOK_LONELY)
             continue
         face_center = (face[0]+(face[2]/2), face[1]+(face[3]/2))
-        face_zone = findZone(face_center)
-        logging.info("face is in zone[{}][{}]".format(face_zone[0], face_zone[1]))
-        new_point_zone = turnAndFaceZone(point_zone, face_zone)
-        if new_point_zone:
-            point_zone = new_point_zone
-            just_moved = True
+        logging.info("face center is {},{}".format(face_center))
