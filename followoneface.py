@@ -1,4 +1,5 @@
 import logging
+import time
 logging.getLogger('').setLevel(logging.INFO)
 _DEBUG=False
 
@@ -19,7 +20,7 @@ cascade = cv2.CascadeClassifier(CASCADE_PATH)
 import io
 import sys
 
-def calculateImageDifference(prev_image, current_imnage):
+def calculateImageDifference(prev_image, current_image):
     "Detect changes in the green channel."
     changed_pixels = 0
     for x in xrange(current_image.w):
@@ -32,16 +33,16 @@ def trainMotion(camera):
     logging.debug("Training motion")
     try:
         camera.start_preview(fullscreen=False, window=(100,100,camera.resolution[0], camera.resolution[1]))
-        self._motion_threshold = 9999
-        self.getNextFrame()
+        _motion_threshold = 9999
+        getNextFrame()
         prev_image = captureImage()
         for i in range(TRAINING_SAMPLES):
             prev_image = current_image
             current_image = captureImage()
-            motion = self.calculateImageDifference(prev_image, current_image)
-            motion_threshold = min(motion, self._motion_threshold)
+            motion = calculateImageDifference(prev_image, current_image)
+            motion_threshold = min(motion, _motion_threshold)
     finally:
-        self._camera.stop_preview()
+        _camera.stop_preview()
     logging.debug("Trained motion threshold is {}".format(motion_threshold))
     return motion_threshold
 
@@ -93,6 +94,7 @@ if __name__ == '__main__':
     frame_delay_secs = 1.0/CAPTURE_RATE_FPS
     rgb_image = captureImage(camera)
     last_motion_at = 0l
+    last_frame_at = 0l
     just_moved = False
     while True:
         delay = (last_frame_at + frame_delay_secs) - time.time()
@@ -105,7 +107,7 @@ if __name__ == '__main__':
         if just_moved:
             just_moved = False
             continue
-        motion = self.calculateImageDifference(prev_image, rgb_image)
+        motion = calculateImageDifference(prev_image, rgb_image)
         if motion < motion_threshold:
             if time.time() < (last_motion_at + SLEEPY_DELAY_SECS):
                 pass  # indicate that we're bored or sleeping
