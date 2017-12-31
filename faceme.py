@@ -1,4 +1,5 @@
 import cv2
+import numpy
 
 # Import the packages we need for drawing and displaying images
 from PIL import Image, ImageDraw
@@ -23,8 +24,8 @@ def findFaces(gray_image):
     # Tell the vision service to look for faces in the image
     faces = cascade.detectMultiScale(
         image,
-        scaleFactor=1.2,
-        minNeighbors=5
+        minNeighbors=5,
+        scaleFactor=1.2
     )
     if len(faces): logging.info("Found {0} front faces!".format(len(faces)))
     return faces
@@ -49,5 +50,7 @@ def findFaces(gray_image):
 for image_filename in sys.argv[1:]:
     content = loadImageFile(image_filename)
     image = Image.open(io.BytesIO(content))
-    faces = findFaces(image)
+    cv2_image = numpy.array(image)
+    cv2_image = cv2.cvtColor(cv2_image, cv2.COLOR_RGB2GRAY)
+    faces = findFaces(cv2_image)
     im.show()
