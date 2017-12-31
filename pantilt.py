@@ -10,11 +10,6 @@ logging.getLogger().setLevel(logging.DEBUG)
 
 pi = pigpio.pi()
 
-# Describe our geometry
-COLS = 4
-ROWS = 3
-DIMENSIONS=(COLS, ROWS)
-
 # Describe our hardware setup, pin numbers are BCM indices
 PAN_PIN = 14
 TILT_PIN = 15
@@ -39,16 +34,16 @@ def getPulseForDegrees(degrees):
   logging.debug("degree {} is pulse {}".format(degrees, pulse))
   return pulse
 
-def positionTo(zone):
-    col, row = zone
-    logging.debug("point to ({},{}) of [{},{}]".format(col,row,COLS,ROWS))
-    pan(X_MIN + _COL_SPAN / COLS * (col + 0.5))
-    tilt(Y_MIN + _ROW_SPAN / ROWS * (row + 0.5))
+def panToPercentage(percent):
+  pan((100.0/percent) * _DEGREE_RANGE + DEGREE_MIN)
 
-def pan(degrees):
+def tiltToPercentage(percent):
+  tilt((100.0/percent) * _DEGREE_RANGE + DEGREE_MIN)
+
+def panToDegrees(degrees):
     servo_write(PAN_PIN, degrees)
 
-def tilt(degrees):
+def tiltToDegrees(degrees):
     servo_write(TILT_PIN, degrees)
 
 def servo_write(pin, degrees):
@@ -60,18 +55,18 @@ def demo():
     pi.set_mode(PAN_PIN, pigpio.OUTPUT)
     pi.set_mode(TILT_PIN, pigpio.OUTPUT)
 
-    tilt(0)
+    tiltToPercentage(0)
     time.sleep(2)
-    tilt(10)
-    for x in range(DEGREE_MIN, DEGREE_MAX, 10):
-      pan(x)
+    tiltToPercentage(20)
+    for x in range(10,100,10)
+      panToPercentage(x)
       time.sleep(0.2)
-    tilt(90)
-    for x in range(DEGREE_MAX, DEGREE_MIN, -10):
-      pan(x)
+    tiltToPercentage(50)
+    for x in range(100, 0, -10):
+      panToPercentage(x)
       time.sleep(0.2)
-    tilt(40)
-    pan(60)
+    tiltToPercentage(50)
+    panToPercentage(50)
     pi.stop()
 
 
