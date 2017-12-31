@@ -11,6 +11,9 @@ from PIL import Image
 import cv2
 import numpy
 CASCADE_PATH="haarcascade_frontalface_default.xml"
+#CASCADE_PATH = "lbpcascade_frontalface_improved.xml"
+ALT_CASCADE_PATH = "lbpcascade_profileface.xml"
+
 cascade = cv2.CascadeClassifier(CASCADE_PATH)
 
 # Import the packages we need for reading parameters and files
