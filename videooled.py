@@ -12,7 +12,7 @@ from picamera import PiCamera
 
 from PIL import Image
 
-RESOLUTION = (320, 240)
+RESOLUTION = (600, 400)
 CAMERA_ERROR_DELAY_SECS = 1
 
 
@@ -30,7 +30,6 @@ def displayImage(display, queue):
     # 128x64 display with hardware I2C:
     display.begin()
     display.clear()
-    display.display()
 
     image = None
     skipped_images = 0
