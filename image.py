@@ -23,7 +23,7 @@ cv2_image = cv2.cvtColor(cv2_image, cv2.COLOR_RGB2GRAY)
 (thresh, cv2_image) = cv2.threshold(cv2_image, 128, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
 cv2_image = cv2.resize(cv2_image, (disp.width, disp.height))
 
-cv2_image = cv2.flip(cv2_image, 0);
+#cv2_image = cv2.flip(cv2_image, 0);
 display_image = Image.fromarray(cv2_image).convert('1')
 
 disp.image(display_image)

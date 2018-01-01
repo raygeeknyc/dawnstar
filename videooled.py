@@ -18,7 +18,7 @@ CAMERA_ERROR_DELAY_SECS = 1
 
 camera = PiCamera()
 camera.resolution = RESOLUTION
-camera.vflip = True  # Our camera is not flipped but our display is
+camera.vflip = False
 image_buffer = io.BytesIO()
 
 import Adafruit_SSD1306
