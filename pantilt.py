@@ -42,16 +42,16 @@ def demo():
     panToPercentage(0)
     tiltToPercentage(0)
     time.sleep(2)
-    for x in range(0, 110, 10):
+    for x in range(0, 105, 5):
       panToPercentage(x)
-      time.sleep(0.2)
+      time.sleep(0.1)
     time.sleep(2)
-    for x in range(0, 110, 10):
+    for x in range(0, 105, 5):
       tiltToPercentage(x)
-      time.sleep(0.5)
-    for x in range(100, -10, -10):
+      time.sleep(0.1)
+    for x in range(100, -5, -5):
       panToPercentage(x)
-      time.sleep(0.2)
+      time.sleep(0.1)
     tiltToPercentage(50)
     panToPercentage(50)
     time.sleep(0.2)
