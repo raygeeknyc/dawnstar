@@ -11,6 +11,10 @@ HAAR_CASCADE_PATH = "haarcascade_frontalface_default.xml"
 HAAR_ALT_CASCADE_PATH="haarcascade_profileface.xml"
 LBP_CASCADE_PATH = "lbpcascade_frontalface_improved.xml"
 LBP_ALT_CASCADE_PATH = "lbpcascade_profileface.xml"
+haar_classifier = cv2.CascadeClassifier(HAAR_CASCADE_PATH)
+haar_alt_classifier = cv2.CascadeClassifier(HAAR_ALT_CASCADE_PATH)
+lbp_classifier = cv2.CascadeClassifier(LBP_CASCADE_PATH)
+lbp_alt_classifier = cv2.CascadeClassifier(LBP_ALT_CASCADE_PATH)
 FRAME_COLOR = (0, 255, 100)
 FRAME_WIDTH = 2
 
@@ -19,13 +23,9 @@ import io
 import sys
 
 def compareClassifiers(cv2_image):
-    cascade = cv2.CascadeClassifier(HAAR_CASCADE_PATH)
-    alt_cascade = cv2.CascadeClassifier(HAAR_ALT_CASCADE_PATH)
-    haar_faces = findFaces(cv2_image, cascade, alt_cascade)
+    haar_faces = findFaces(cv2_image, haar_classifier, haar_alt_classifier)
     haar_count = len(haar_faces)
-    cascade = cv2.CascadeClassifier(LBP_CASCADE_PATH)
-    alt_cascade = cv2.CascadeClassifier(LBP_ALT_CASCADE_PATH)
-    lbp_faces = findFaces(cv2_image, cascade, alt_cascade)
+    lbp_faces = findFaces(cv2_image, lbp_classifier, lbp_alt_classifier)
     lbp_count = len(lbp_faces)
     if lbp_count != haar_count:
         logging.info("HAAR: {}, LBP: {}".format(haar_count, lbp_count))
@@ -35,9 +35,9 @@ def compareClassifiers(cv2_image):
         return lbp_faces
 
 # Take a CV2 RGB image, return a list of faces
-def findFaces(cv2_image, cascade, alt_cascade):
+def findFaces(cv2_image, classifier, alt_classifier):
     grayscale_image = cv2.cvtColor(cv2_image, cv2.COLOR_RGB2GRAY)
-    faces = cascade.detectMultiScale(
+    faces = classifier.detectMultiScale(
         grayscale_image,
         scaleFactor=1.1,
         minSize=(30,30)
@@ -46,7 +46,7 @@ def findFaces(cv2_image, cascade, alt_cascade):
             logging.debug("Found {0} front faces!".format(len(faces)))
     else:
         logging.debug("finding right profile faces")
-        faces = alt_cascade.detectMultiScale(
+        faces = alt_classifier.detectMultiScale(
             grayscale_image,
             scaleFactor=1.1,
             minSize=(30,30)
@@ -58,7 +58,7 @@ def findFaces(cv2_image, cascade, alt_cascade):
             #  double-counting the same face in both orientations
             logging.debug("finding left profile faces")
             flipped_image = cv2.flip(grayscale_image, 1)
-            left_faces = alt_cascade.detectMultiScale(
+            left_faces = alt_classifier.detectMultiScale(
                 flipped_image,
                 scaleFactor=1.1,
                 minSize=(30,30)
@@ -107,22 +107,23 @@ def frameFace(image, face):
     canvas.line((face[0], face[1]+face[3], face[0]+face[2], face[1]+face[3]), fill=FRAME_COLOR, width=FRAME_WIDTH)
     canvas.line((face[0], face[1], face[0], face[1]+face[3]), fill=FRAME_COLOR, width=FRAME_WIDTH)
 
-faces_found = 0
-images = 0
-for image_filename in sys.argv[1:]:
-    images += 1
-    rgb_image = loadImage(image_filename)
-    wpercent = (320/float(rgb_image.size[0]))
-    hsize = int((float(rgb_image.size[1])*float(wpercent)))
-    rgb_image = rgb_image.resize((320, hsize), Image.ANTIALIAS)
+if __name__ == '__main__':
+    faces_found = 0
+    images = 0
+    for image_filename in sys.argv[1:]:
+        images += 1
+        rgb_image = loadImage(image_filename)
+        wpercent = (320/float(rgb_image.size[0]))
+        hsize = int((float(rgb_image.size[1])*float(wpercent)))
+        rgb_image = rgb_image.resize((320, hsize), Image.ANTIALIAS)
 
-    cv2_image = numpy.array(rgb_image)
-    faces = compareClassifiers(cv2_image)
-    if len(faces):
-        face = findOneFace(faces)
-        face_center = (face[0]+(face[2]/2), face[1]+(face[3]/2))
-        logging.debug("face center is {}".format(face_center))
-        frameFace(rgb_image, face)
-        faces_found += 1
-        if _DEBUG: showImage(rgb_image)
-logging.info("Images {}, found faces in {}".format(images, faces_found))
+        cv2_image = numpy.array(rgb_image)
+        faces = compareClassifiers(cv2_image)
+        if len(faces):
+            face = findOneFace(faces)
+            face_center = (face[0]+(face[2]/2), face[1]+(face[3]/2))
+            logging.debug("face center is {}".format(face_center))
+            frameFace(rgb_image, face)
+            faces_found += 1
+            if _DEBUG: showImage(rgb_image)
+    logging.info("Images {}, found faces in {}".format(images, faces_found))
