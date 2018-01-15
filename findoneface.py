@@ -2,62 +2,43 @@ import logging
 logging.getLogger('').setLevel(logging.INFO)
 _DEBUG=False
 
-from picamera import PiCamera
-RESOLUTION = (640, 480)
-
-ZONES=(4,3)
 # Import the packages we need for drawing and displaying images
-from PIL import Image
+from PIL import Image, ImageDraw
 import cv2
 import numpy
-CASCADE_PATH="haarcascade_frontalface_default.xml"
 #CASCADE_PATH = "lbpcascade_frontalface_improved.xml"
-ALT_CASCADE_PATH = "lbpcascade_profileface.xml"
+CASCADE_PATH = "haarcascade_frontalface_default.xml"
+ALT_CASCADE_PATH = "haarcascade_profileface.xml"
+FRAME_COLOR = (0, 127, 255)
+FRAME_WIDTH = 2
 
 cascade = cv2.CascadeClassifier(CASCADE_PATH)
+alt_cascade = cv2.CascadeClassifier(ALT_CASCADE_PATH)
 
 # Import the packages we need for reading parameters and files
 import io
 import sys
 
-def findZone(point):
-    logging.debug("point[{}][{}]".format(point[0],point[1]))
-    for x in range(ZONES[0]):
-        x_boundary=(RESOLUTION[0]/ZONES[0]*(x+1))
-        for y in range(ZONES[1]):
-            y_boundary=(RESOLUTION[1]/ZONES[1]*(y+1))
-            logging.debug("[{}][{}] is [{}][{}]".format(x,y,x_boundary,y_boundary))
-            if point[0]<x_boundary and point[1]<y_boundary:
-                logging.debug("zone[{}][{}]".format(x_boundary,y_boundary))
-                return (x,y)
-            
 
-def getCamera():
-    camera = PiCamera()
-    camera.resolution = RESOLUTION
-    camera.vflip = False
-    return camera
-
-def captureImage(camera):
-    image_buffer = io.BytesIO()
-    camera.capture(image_buffer, format="jpeg")
-    image_buffer.seek(0)
-    image = Image.open(image_buffer)
-    return image
-
-# Take a PIL RGB image, return a list of faces
-def findFaces(image):
-    opencv_image = numpy.array(image) 
-    grayscale = cv2.cvtColor(opencv_image, cv2.COLOR_RGB2GRAY)
-
+# Take a CV2 RGB image, return a list of faces
+def findFaces(cv2_image):
+    grayscale_image = cv2.cvtColor(cv2_image, cv2.COLOR_RGB2GRAY)
     faces = cascade.detectMultiScale(
-        grayscale,
-        scaleFactor=1.1,
-        minNeighbors=5,
-        minSize=(30, 30),
-        flags = cv2.cv.CV_HAAR_SCALE_IMAGE
+        grayscale_image,
+        scaleFactor=1.2
     )
-    if len(faces): logging.info("Found {0} faces!".format(len(faces)))
+    if len(faces):
+            logging.info("Found {0} front faces!".format(len(faces)))
+    else:
+        logging.info("finding profile faces")
+        faces = alt_cascade.detectMultiScale(
+            grayscale_image,
+            scaleFactor=1.2
+        )
+        if len(faces) > 0:
+            logging.info("Found {0} profile faces!".format(len(faces)))
+    for face in faces:
+        logging.info(face)
     return faces
 
 def findOneFace(faces):
@@ -74,15 +55,27 @@ def findOneFace(faces):
 def showImage(image):
     image.show()
 
-if __name__ == '__main__':
-    logging.info("finding a face")
-    camera = getCamera()
-    while True:
-        rgb_image = captureImage(camera)
-        if _DEBUG: showImage(rgb_image)
-        faces = findFaces(rgb_image)
-        face = findOneFace(faces)
-        if face:
-            face_center = (face[0]+(face[2]/2), face[1]+(face[3]/2))
-            face_zone = findZone(face_center)
-            logging.info("face is in zone[{}][{}]".format(face_zone[0], face_zone[1]))
+def loadImage(filename):
+    logging.info(filename)
+    pil_image = Image.open(filename)
+    logging.info("Dimensions {}".format(pil_image.size))
+    return pil_image
+
+def frameFace(image, face):
+    logging.info("face: {}".format(face))
+    canvas = ImageDraw.Draw(image)
+    canvas.line((face[0], face[1], face[0]+face[2], face[1]), fill=FRAME_COLOR, width=FRAME_WIDTH)
+    canvas.line((face[0]+face[2], face[1], face[0]+face[2], face[1]+face[3]), fill=FRAME_COLOR, width=FRAME_WIDTH)
+    canvas.line((face[0], face[1]+face[3], face[0]+face[2], face[1]+face[3]), fill=FRAME_COLOR, width=FRAME_WIDTH)
+    canvas.line((face[0], face[1], face[0], face[1]+face[3]), fill=FRAME_COLOR, width=FRAME_WIDTH)
+
+for image_filename in sys.argv[1:]:
+    rgb_image = loadImage(image_filename)
+    cv2_image = numpy.array(rgb_image)
+    faces = findFaces(cv2_image)
+    face = findOneFace(faces)
+    if face:
+        face_center = (face[0]+(face[2]/2), face[1]+(face[3]/2))
+        logging.info("face center is {}".format(face_center))
+        frameFace(rgb_image, face)
+    showImage(rgb_image)
