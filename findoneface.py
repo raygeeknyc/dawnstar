@@ -1,44 +1,82 @@
 import logging
 logging.getLogger('').setLevel(logging.INFO)
 _DEBUG=False
+_DEBUG=True
 
 # Import the packages we need for drawing and displaying images
 from PIL import Image, ImageDraw
 import cv2
 import numpy
-#CASCADE_PATH = "lbpcascade_frontalface_improved.xml"
-CASCADE_PATH = "haarcascade_frontalface_default.xml"
-ALT_CASCADE_PATH = "haarcascade_profileface.xml"
-FRAME_COLOR = (0, 127, 255)
+HAAR_CASCADE_PATH = "haarcascade_frontalface_default.xml"
+HAAR_ALT_CASCADE_PATH="haarcascade_profileface.xml"
+LBP_CASCADE_PATH = "lbpcascade_frontalface_improved.xml"
+LBP_ALT_CASCADE_PATH = "lbpcascade_profileface.xml"
+FRAME_COLOR = (0, 255, 100)
 FRAME_WIDTH = 2
-
-cascade = cv2.CascadeClassifier(CASCADE_PATH)
-alt_cascade = cv2.CascadeClassifier(ALT_CASCADE_PATH)
 
 # Import the packages we need for reading parameters and files
 import io
 import sys
 
+def compareClassifiers(cv2_image):
+    cascade = cv2.CascadeClassifier(HAAR_CASCADE_PATH)
+    alt_cascade = cv2.CascadeClassifier(HAAR_ALT_CASCADE_PATH)
+    haar_faces = findFaces(cv2_image, cascade, alt_cascade)
+    haar_count = len(haar_faces)
+    cascade = cv2.CascadeClassifier(LBP_CASCADE_PATH)
+    alt_cascade = cv2.CascadeClassifier(LBP_ALT_CASCADE_PATH)
+    lbp_faces = findFaces(cv2_image, cascade, alt_cascade)
+    lbp_count = len(lbp_faces)
+    if lbp_count != haar_count:
+        logging.info("HAAR: {}, LBP: {}".format(haar_count, lbp_count))
+    if len(haar_faces) > len(lbp_faces):
+        return haar_faces
+    else:
+        return lbp_faces
 
 # Take a CV2 RGB image, return a list of faces
-def findFaces(cv2_image):
+def findFaces(cv2_image, cascade, alt_cascade):
     grayscale_image = cv2.cvtColor(cv2_image, cv2.COLOR_RGB2GRAY)
     faces = cascade.detectMultiScale(
         grayscale_image,
-        scaleFactor=1.2
+        scaleFactor=1.1,
+        minSize=(30,30)
     )
     if len(faces):
-            logging.info("Found {0} front faces!".format(len(faces)))
+            logging.debug("Found {0} front faces!".format(len(faces)))
     else:
-        logging.info("finding profile faces")
+        logging.debug("finding right profile faces")
         faces = alt_cascade.detectMultiScale(
             grayscale_image,
-            scaleFactor=1.2
+            scaleFactor=1.1,
+            minSize=(30,30)
         )
         if len(faces) > 0:
-            logging.info("Found {0} profile faces!".format(len(faces)))
+            logging.debug("Found {0} right profile faces!".format(len(faces)))
+        else: 
+            # We only look for left profiles if there were no right to avoid
+            #  double-counting the same face in both orientations
+            logging.debug("finding left profile faces")
+            flipped_image = cv2.flip(grayscale_image, 1)
+            left_faces = alt_cascade.detectMultiScale(
+                flipped_image,
+                scaleFactor=1.1,
+                minSize=(30,30)
+            )
+            if len(left_faces) > 0:
+                logging.debug("Found {0} left profile faces!".format(len(left_faces)))
+                # We flip the X coordinate of the face on a flipped image to
+                # translate it back to the original face's orientation
+                for face in left_faces:
+                    new_x = grayscale_image.shape[1]-face[0]-face[2]
+                    logging.debug("X: {} of {} to {}".format(face[0], grayscale_image.shape[0], new_x))
+                    face[0] = new_x
+                if len(faces) > 0:
+                    faces += left_faces
+                else:
+                    faces = left_faces
     for face in faces:
-        logging.info(face)
+        logging.debug(face)
     return faces
 
 def findOneFace(faces):
@@ -56,26 +94,35 @@ def showImage(image):
     image.show()
 
 def loadImage(filename):
-    logging.info(filename)
+    if _DEBUG:
+        logging.info(filename)
     pil_image = Image.open(filename)
-    logging.info("Dimensions {}".format(pil_image.size))
+    logging.debug("Dimensions {}".format(pil_image.size))
     return pil_image
 
 def frameFace(image, face):
-    logging.info("face: {}".format(face))
     canvas = ImageDraw.Draw(image)
     canvas.line((face[0], face[1], face[0]+face[2], face[1]), fill=FRAME_COLOR, width=FRAME_WIDTH)
     canvas.line((face[0]+face[2], face[1], face[0]+face[2], face[1]+face[3]), fill=FRAME_COLOR, width=FRAME_WIDTH)
     canvas.line((face[0], face[1]+face[3], face[0]+face[2], face[1]+face[3]), fill=FRAME_COLOR, width=FRAME_WIDTH)
     canvas.line((face[0], face[1], face[0], face[1]+face[3]), fill=FRAME_COLOR, width=FRAME_WIDTH)
 
+faces_found = 0
+images = 0
 for image_filename in sys.argv[1:]:
+    images += 1
     rgb_image = loadImage(image_filename)
+    wpercent = (320/float(rgb_image.size[0]))
+    hsize = int((float(rgb_image.size[1])*float(wpercent)))
+    rgb_image = rgb_image.resize((320, hsize), Image.ANTIALIAS)
+
     cv2_image = numpy.array(rgb_image)
-    faces = findFaces(cv2_image)
-    face = findOneFace(faces)
-    if face:
+    faces = compareClassifiers(cv2_image)
+    if len(faces):
+        face = findOneFace(faces)
         face_center = (face[0]+(face[2]/2), face[1]+(face[3]/2))
-        logging.info("face center is {}".format(face_center))
+        logging.debug("face center is {}".format(face_center))
         frameFace(rgb_image, face)
-    showImage(rgb_image)
+        faces_found += 1
+        if _DEBUG: showImage(rgb_image)
+logging.info("Images {}, found faces in {}".format(images, faces_found))
