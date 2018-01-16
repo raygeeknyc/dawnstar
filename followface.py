@@ -4,8 +4,9 @@ import sys
 import numpy
 from PIL import Image, ImageDraw
 
-import findoneface
 from findoneface import lbp_classifier, lbp_alt_classifier, loadImage, findOneFace, findFaces, frameFace, showImage
+from pantilt import pointTo
+
 logging.getLogger('').setLevel(logging.INFO)
 RESOLUTION=(320,240)
 classifier = findoneface.lbp_classifier
@@ -28,6 +29,7 @@ def getCenteringCorrection(face, field_of_view):
 
 faces_found = 0
 images = 0
+pan_tilt_state = [None, None]
 for image_filename in sys.argv[1:]:
     images += 1
     rgb_image = loadImage(image_filename)
@@ -43,6 +45,7 @@ for image_filename in sys.argv[1:]:
         logging.info("face center is {}".format(face_center))
         logging.info("look direction (x,y) is {}".format(look_dir))
         frameFace(rgb_image, face)
+        pointTo(look_dir, pan_tilt_state)
         faces_found += 1
         if _DEBUG: showImage(rgb_image)
 logging.info("Images {}, found faces in {}".format(images, faces_found))

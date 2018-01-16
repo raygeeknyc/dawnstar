@@ -13,6 +13,8 @@ TILT_PIN = 15
 
 PULSE_MIN = 0.9/1000
 PULSE_MAX = 1.9/1000
+SERVO_STEPS = 20
+_PULSE_STEP = (PULSE_MAX - PULSE_MIN) / SERVO_STEPS
 PULSE_WIDTH = 20.0/1000
 logging.debug("min {} max{} step {}".format(PULSE_MIN, PULSE_MAX, PULSE_WIDTH))
 
@@ -38,6 +40,25 @@ def tiltToPercentage(percent):
     logging.debug(value)
     tilt_servo.value = value
 
+def pointTo(pan_tilt_directions, servo_state):
+    "Adjust servo state (pan,tilt) by pan_tilt_directions (pan, tilt) steps."
+    if servo_state[0] == None:
+        servo_state[0] = PULSE_MIN
+        servo_state[1] = PULSE_MIN
+    if (pan_tilt_directions[0] == 0 and pan_tilt_directions[1] == 0): return
+    new_pan = servo_state[0] + pan_tilt_directions[0] * _PULSE_STEP
+    new_tilt = servo_state[1] + pan_tilt_directions[1] * _PULSE_STEP
+    if new_pan < PULSE_MIN:
+        new_pan = PULSE_MIN
+    if new_pan > PULSE_MAX:
+        new_pan = PULSE_MAX
+    if new_tilt	 < PULSE_MIN:
+        new_tilt = PULSE_MIN
+    if new_tilt > PULSE_MAX:
+        new_tilt = PULSE_MAX
+    servo_state[0] = new_pan
+    servo_state[1] = new_tilt
+    
 def demo():
     panToPercentage(0)
     tiltToPercentage(0)
@@ -60,19 +81,20 @@ def demo():
 
 global tilt_servo
 global pan_servo
-tilt_servo = Servo(TILT_PIN, min_pulse_width=PULSE_MIN, max_pulse_width=PULSE_MAX, frame_width=PULSE_WIDTH)
-pan_servo = Servo(PAN_PIN, min_pulse_width=PULSE_MIN, max_pulse_width=PULSE_MAX, frame_width=PULSE_WIDTH)
 
-logging.info("Starting demo loop")
-while True:
-    try:
-        demo()
-        time.sleep(10)
-        pan_servo.detach()
-        tilt_servo.detach()
-    except KeyboardInterrupt:
-        logging.info("interrupted, exiting")
-        break
-pan_servo.detach()
-tilt_servo.detach()
+if __name__ == '__main__':
+    tilt_servo = Servo(TILT_PIN, min_pulse_width=PULSE_MIN, max_pulse_width=PULSE_MAX, frame_width=PULSE_WIDTH)
+    pan_servo = Servo(PAN_PIN, min_pulse_width=PULSE_MIN, max_pulse_width=PULSE_MAX, frame_width=PULSE_WIDTH)
+    logging.info("Starting demo loop")
+    while True:
+        try:
+            demo()
+            time.sleep(10)
+            pan_servo.detach()
+            tilt_servo.detach()
+        except KeyboardInterrupt:
+            logging.info("interrupted, exiting")
+            break
+    pan_servo.detach()
+    tilt_servo.detach()
 logging.debug("Done")
