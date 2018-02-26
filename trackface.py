@@ -1,26 +1,45 @@
-_DEBUG=True
 import logging
-logging.getLogger('').setLevel(logging.INFO)
+_DEBUG=True
+if _DEBUG:
+  logging.getLogger().setLevel(logging.DEBUG)
+else:
+  print "info"
+  logging.getLogger().setLevel(logging.INFO)
 
+import sys
+import cv2
+from followface import findFaces, findOneFace, getCenteringCorrection, frameFace, classifier, profile_classifier
 pan_tilt_state = [None, None]
+RESOLUTION=(640, 480)
+
 faces = 0
 frames = 0
-# loop over video frames here
-    frames += 1
-    rgb_image = loadImage(image_filename)
-    wpercent = (RESOLUTION[0]/float(rgb_image.size[0]))
-    hsize = int((float(rgb_image.size[1])*float(wpercent)))
-    rgb_image = rgb_image.resize((RESOLUTION[0], hsize), Image.ANTIALIAS)
 
-    cv2_image = numpy.array(rgb_image)
-    faces = findFaces(cv2_image, classifier, profile_classifier)
-    if len(faces):
+videostream = cv2.VideoCapture(0)
+videostream.set(cv2.cv.CV_CAP_PROP_FRAME_WIDTH, RESOLUTION[0])
+videostream.set(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT, RESOLUTION[1])
+if not videostream.isOpened():
+  logging.error("Video camera not opened")
+  sys.exit(255)
+
+while(True):
+    # Capture frame-by-frame
+    ret, frame = videostream.read()
+    frames += 1
+    faces = findFaces(frame, classifier, profile_classifier)
+    logging.info("{} faces".format(len(faces)))
+    if len(faces) > 0:
         face = findOneFace(faces)
         (face_center, look_dir) = getCenteringCorrection(face, RESOLUTION)
         logging.info("face center is {}".format(face_center))
         logging.info("look direction (x,y) is {}".format(look_dir))
-        frameFace(rgb_image, face)
+        frameFace(frame, face)
         pointTo(look_dir, pan_tilt_state)
         faces_found += 1
-        if _DEBUG: showImage(rgb_image)
-logging.info("Images {}, found faces in {}".format(images, faces_found))
+    # Display the resulting frame
+    cv2.imshow('frame',frame)
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+# When everything done, release the capture
+videostream.release()
+cv2.destroyAllWindows()

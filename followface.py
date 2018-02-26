@@ -7,7 +7,6 @@ from PIL import Image, ImageDraw
 from findoneface import lbp_classifier, lbp_alt_classifier, loadImage, findOneFace, findFaces, frameFace, showImage
 from pantilt import pointTo
 
-logging.getLogger('').setLevel(logging.INFO)
 RESOLUTION=(320,240)
 classifier = lbp_classifier
 profile_classifier = lbp_alt_classifier

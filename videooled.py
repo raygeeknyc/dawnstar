@@ -2,7 +2,6 @@ import time
 import io
 import sys
 import logging
-logging.getLogger().setLevel(logging.INFO)
 import numpy
 import cv2
 import threading

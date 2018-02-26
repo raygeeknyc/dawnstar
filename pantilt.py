@@ -18,8 +18,6 @@ else:
 import logging
 import time
 
-logging.getLogger().setLevel(logging.DEBUG)
-
 # Describe our hardware setup, pin numbers are BCM indices
 PAN_PIN = 14
 TILT_PIN = 15

@@ -1,7 +1,4 @@
 import logging
-logging.getLogger('').setLevel(logging.INFO)
-_DEBUG=False
-_DEBUG=True
 
 # Import the packages we need for drawing and displaying images
 from PIL import Image, ImageDraw
@@ -28,7 +25,7 @@ def compareClassifiers(cv2_image):
     lbp_faces = findFaces(cv2_image, lbp_classifier, lbp_alt_classifier)
     lbp_count = len(lbp_faces)
     if lbp_count != haar_count:
-        logging.info("HAAR: {}, LBP: {}".format(haar_count, lbp_count))
+        logging.debug("HAAR: {}, LBP: {}".format(haar_count, lbp_count))
     if len(haar_faces) > len(lbp_faces):
         return haar_faces
     else:
