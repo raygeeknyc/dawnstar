@@ -1,5 +1,5 @@
 import logging
-
+_DEBUG=False
 # Import the packages we need for drawing and displaying images
 from PIL import Image, ImageDraw
 import cv2
@@ -98,11 +98,10 @@ def loadImage(filename):
     return pil_image
 
 def frameFace(image, face):
-    canvas = ImageDraw.Draw(image)
-    canvas.line((face[0], face[1], face[0]+face[2], face[1]), fill=FRAME_COLOR, width=FRAME_WIDTH)
-    canvas.line((face[0]+face[2], face[1], face[0]+face[2], face[1]+face[3]), fill=FRAME_COLOR, width=FRAME_WIDTH)
-    canvas.line((face[0], face[1]+face[3], face[0]+face[2], face[1]+face[3]), fill=FRAME_COLOR, width=FRAME_WIDTH)
-    canvas.line((face[0], face[1], face[0], face[1]+face[3]), fill=FRAME_COLOR, width=FRAME_WIDTH)
+    cv2.line(image, (face[0], face[1]), (face[0]+face[2], face[1]), FRAME_COLOR, FRAME_WIDTH)
+    cv2.line(image, (face[0]+face[2], face[1]), (face[0]+face[2], face[1]+face[3]), FRAME_COLOR, FRAME_WIDTH)
+    cv2.line(image, (face[0], face[1]+face[3]), (face[0]+face[2], face[1]+face[3]), FRAME_COLOR, FRAME_WIDTH)
+    cv2.line(image, (face[0], face[1]), (face[0], face[1]+face[3]), FRAME_COLOR, FRAME_WIDTH)
 
 if __name__ == '__main__':
     faces_found = 0

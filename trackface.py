@@ -9,6 +9,7 @@ else:
 import sys
 import cv2
 from followface import findFaces, findOneFace, getCenteringCorrection, frameFace, classifier, profile_classifier
+from pantilt import pointTo
 pan_tilt_state = [None, None]
 RESOLUTION=(640, 480)
 
@@ -35,7 +36,6 @@ while(True):
         logging.info("look direction (x,y) is {}".format(look_dir))
         frameFace(frame, face)
         pointTo(look_dir, pan_tilt_state)
-        faces_found += 1
     # Display the resulting frame
     cv2.imshow('frame',frame)
     if cv2.waitKey(1) & 0xFF == ord('q'):
