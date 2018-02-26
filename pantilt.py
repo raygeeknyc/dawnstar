@@ -1,6 +1,19 @@
-#
-from gpiozero import Servo
-#
+# If we're not a a Pi (i.e. testing on a laptop) minimally mock up the Servo class
+_ON_PI = False
+if _ON_PI:
+  from gpiozero import Servo
+else:
+  class Servo(object):
+    def __init__(self, pin, min_pulse_width, max_pulse_width, frame_width):
+      self._pin = pin
+      self._min_pulse = min_pulse_width
+      self._max_pulse = max_pulse_width
+      self._frame = frame_width
+      self.value = None
+      self._attached = True
+
+    def detach(self):
+      self._attached = False
 
 import logging
 import time
