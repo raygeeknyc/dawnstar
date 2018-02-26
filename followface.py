@@ -9,8 +9,8 @@ from pantilt import pointTo
 
 logging.getLogger('').setLevel(logging.INFO)
 RESOLUTION=(320,240)
-classifier = findoneface.lbp_classifier
-profile_classifier = findoneface.lbp_alt_classifier
+classifier = lbp_classifier
+profile_classifier = lbp_alt_classifier
 
 def getCenteringCorrection(face, field_of_view):
     face_center = (face[0]+(face[2]/2), face[1]+(face[3]/2))
