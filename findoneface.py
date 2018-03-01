@@ -33,7 +33,8 @@ def compareClassifiers(cv2_image):
 
 # Take a CV2 RGB image, return a list of faces
 def findFaces(cv2_image, classifier, alt_classifier):
-    grayscale_image = cv2.cvtColor(cv2_image, cv2.COLOR_RGB2GRAY)
+    #grayscale_image = cv2.cvtColor(cv2_image, cv2.COLOR_RGB2GRAY)
+    grayscale_image = cv2_image.copy()
     faces = classifier.detectMultiScale(
         grayscale_image,
         scaleFactor=1.1,
