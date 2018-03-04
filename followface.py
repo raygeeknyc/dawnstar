@@ -4,10 +4,12 @@ import sys
 import numpy
 from PIL import Image, ImageDraw
 
-from findoneface import lbp_classifier, lbp_alt_classifier, loadImage, findOneFace, findFaces, frameFace, showImage
+from findoneface import haar_classifier, haar_alt_classifier, lbp_classifier, lbp_alt_classifier, loadImage, findOneFace, findFaces, frameFace, showImage
 from pantilt import pointTo
 
 RESOLUTION=(320,240)
+alt_classifier = haar_classifier
+alt_profile_classifier = haar_alt_classifier
 classifier = lbp_classifier
 profile_classifier = lbp_alt_classifier
 
