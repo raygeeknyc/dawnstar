@@ -6,6 +6,27 @@ else:
   print "info"
   logging.getLogger().setLevel(logging.INFO)
 
+_pi = False
+
+if _Pi:
+  from picamera import PiCamera
+  global _camera
+  _camera = PiCamera()
+  _camera.resolution = RESOLUTION
+  _camera.vflip = True
+
+  getFrame = piFrameSource
+else:
+  global _videostream
+  _videostream = cv2.VideoCapture(0)
+  _videostream.set(cv2.cv.CV_CAP_PROP_FRAME_WIDTH, RESOLUTION[0])
+  _videostream.set(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT, RESOLUTION[1])
+  if not _videostream.isOpened():
+    logging.error("Video camera not opened")
+    sys.exit(255)
+
+  getFrame = usbFrameSource
+
 import sys
 import time
 import cv2
@@ -33,15 +54,16 @@ def equalize_hist_adaptive(img):
     cl1 = clahe.apply(adaptive_eq_img)
     return adaptive_eq_img
 
+def piFrameSource():
+
+def usbFrameSource():
+    global videostream
+    _, frame = videostream.read()
+    return frame
+
 faces = 0
 frames = 0
 
-videostream = cv2.VideoCapture(0)
-videostream.set(cv2.cv.CV_CAP_PROP_FRAME_WIDTH, RESOLUTION[0])
-videostream.set(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT, RESOLUTION[1])
-if not videostream.isOpened():
-  logging.error("Video camera not opened")
-  sys.exit(255)
 faces_time = 0.0
 contrast_faces_time = 0.0
 brightness_faces_time = 0.0
@@ -57,7 +79,7 @@ detection_faces_adaptive = 0
 detection_faces_alt = 0
 while(True):
     # Capture frame-by-frame
-    ret, frame = videostream.read()
+    frame = getFrame()
     frames += 1
 
     start_time = time.time()
