@@ -21,7 +21,9 @@ if _Pi:
   _camera.resolution = RESOLUTION
   _camera.vflip = True
 
-  getFrame = piFrameSource
+  def getFrame():
+      pass
+
 else:
   logging.debug("Using USB Webcam for video capture")
   global _videostream
@@ -32,7 +34,10 @@ else:
     logging.error("Video camera not opened")
     sys.exit(255)
 
-  getFrame = usbFrameSource
+  def getFrame():
+      global _videostream
+      _, frame = _videostream.read()
+      return frame
 
 from pantilt import pointTo
 pan_tilt_state = [None, None]
@@ -55,14 +60,6 @@ def equalize_hist_adaptive(img):
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
     cl1 = clahe.apply(adaptive_eq_img)
     return adaptive_eq_img
-
-def piFrameSource():
-    pass
-
-def usbFrameSource():
-    global videostream
-    _, frame = videostream.read()
-    return frame
 
 faces = 0
 frames = 0
@@ -136,5 +133,5 @@ while(True):
 # When everything done, release the capture
 logging.info("faces {}, brightness {}, contrast {}, adaptive {}, contrast brightness {}, alt {}".format(detection_faces, detection_faces_brightness, detection_faces_contrast, detection_faces_adaptive, detection_faces_contrast_brightness, detection_faces_alt))
 logging.info("faces time {}, brightness time {}, contrast time {}, adaptive time {} contrast brightness {} alt time {}".format(faces_time, brightness_faces_time, contrast_faces_time, adaptive_faces_time, contrast_brightness_faces_time, alt_faces_time))
-videostream.release()
+_videostream.release()
 cv2.destroyAllWindows()
