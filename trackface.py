@@ -1,14 +1,20 @@
 import logging
-_DEBUG=False
+_DEBUG=True
 if _DEBUG:
   logging.getLogger().setLevel(logging.DEBUG)
 else:
   print "info"
   logging.getLogger().setLevel(logging.INFO)
 
-_pi = False
+import sys
+import time
+import cv2
+from followface import findFaces, findOneFace, getCenteringCorrection, frameFace, classifier, profile_classifier, alt_classifier, alt_profile_classifier
+RESOLUTION=(640, 480)
 
+_Pi = False
 if _Pi:
+  logging.debug("Using PiCamera for video capture")
   from picamera import PiCamera
   global _camera
   _camera = PiCamera()
@@ -17,6 +23,7 @@ if _Pi:
 
   getFrame = piFrameSource
 else:
+  logging.debug("Using USB Webcam for video capture")
   global _videostream
   _videostream = cv2.VideoCapture(0)
   _videostream.set(cv2.cv.CV_CAP_PROP_FRAME_WIDTH, RESOLUTION[0])
@@ -27,13 +34,8 @@ else:
 
   getFrame = usbFrameSource
 
-import sys
-import time
-import cv2
-from followface import findFaces, findOneFace, getCenteringCorrection, frameFace, classifier, profile_classifier, alt_classifier, alt_profile_classifier
 from pantilt import pointTo
 pan_tilt_state = [None, None]
-RESOLUTION=(640, 480)
 
 def equalize_brightness(img):
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
@@ -55,6 +57,7 @@ def equalize_hist_adaptive(img):
     return adaptive_eq_img
 
 def piFrameSource():
+    pass
 
 def usbFrameSource():
     global videostream
