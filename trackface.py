@@ -5,6 +5,8 @@ if _DEBUG:
 else:
   print "info"
   logging.getLogger().setLevel(logging.INFO)
+_Pi = False
+_Pi = True
 
 import sys
 import time
@@ -12,17 +14,22 @@ import cv2
 from followface import findFaces, findOneFace, getCenteringCorrection, frameFace, classifier, profile_classifier, alt_classifier, alt_profile_classifier
 RESOLUTION=(640, 480)
 
-_Pi = False
 if _Pi:
   logging.debug("Using PiCamera for video capture")
   from picamera import PiCamera
+  from picamera.array import PiRGBArray
   global _camera
+  global _raw_capture
   _camera = PiCamera()
   _camera.resolution = RESOLUTION
   _camera.vflip = True
+  _camera.framerate = 32
+  _raw_capture = PiRGBArray(_camera, size=RESOLUTION)
 
   def getFrame():
-      pass
+      _raw_capture.truncate(0)
+      _camera.capture(_raw_capture, 'rgb')
+      return _raw_capture.array
 
 else:
   logging.debug("Using USB Webcam for video capture")
