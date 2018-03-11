@@ -1,9 +1,10 @@
 import logging
 _DEBUG=True
+_DEBUG=False
 if _DEBUG:
+  print "debug"
   logging.getLogger().setLevel(logging.DEBUG)
 else:
-  print "info"
   logging.getLogger().setLevel(logging.INFO)
 _Pi = False
 _Pi = True
@@ -18,11 +19,11 @@ if _Pi:
   logging.debug("Using PiCamera for video capture")
   from picamera import PiCamera
   from picamera.array import PiRGBArray
-  global _camera
-  global _raw_capture
+#  global _camera
+#  global _raw_capture
   _camera = PiCamera()
   _camera.resolution = RESOLUTION
-  _camera.vflip = True
+  _camera.vflip = False
   _camera.framerate = 32
   _raw_capture = PiRGBArray(_camera, size=RESOLUTION)
 
@@ -31,9 +32,12 @@ if _Pi:
       _camera.capture(_raw_capture, 'rgb')
       return _raw_capture.array
 
+  def closeVideo():
+      _camera.close()
+
 else:
   logging.debug("Using USB Webcam for video capture")
-  global _videostream
+  #global _videostream
   _videostream = cv2.VideoCapture(0)
   _videostream.set(cv2.cv.CV_CAP_PROP_FRAME_WIDTH, RESOLUTION[0])
   _videostream.set(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT, RESOLUTION[1])
@@ -42,9 +46,12 @@ else:
     sys.exit(255)
 
   def getFrame():
-      global _videostream
+      #global _videostream
       _, frame = _videostream.read()
       return frame
+
+  def closeVideo():
+      _videostream.release()
 
 from pantilt import pointTo
 pan_tilt_state = [None, None]
@@ -140,5 +147,5 @@ while(True):
 # When everything done, release the capture
 logging.info("faces {}, brightness {}, contrast {}, adaptive {}, contrast brightness {}, alt {}".format(detection_faces, detection_faces_brightness, detection_faces_contrast, detection_faces_adaptive, detection_faces_contrast_brightness, detection_faces_alt))
 logging.info("faces time {}, brightness time {}, contrast time {}, adaptive time {} contrast brightness {} alt time {}".format(faces_time, brightness_faces_time, contrast_faces_time, adaptive_faces_time, contrast_brightness_faces_time, alt_faces_time))
-_videostream.release()
+closeVideo()
 cv2.destroyAllWindows()
