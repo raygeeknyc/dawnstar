@@ -6,8 +6,8 @@ if _DEBUG:
   logging.getLogger().setLevel(logging.DEBUG)
 else:
   logging.getLogger().setLevel(logging.INFO)
-_Pi = False
 _Pi = True
+_Pi = False
 
 import sys
 import time
@@ -19,8 +19,6 @@ if _Pi:
   logging.debug("Using PiCamera for video capture")
   from picamera import PiCamera
   from picamera.array import PiRGBArray
-#  global _camera
-#  global _raw_capture
   _camera = PiCamera()
   _camera.resolution = RESOLUTION
   _camera.vflip = False
@@ -37,7 +35,6 @@ if _Pi:
 
 else:
   logging.debug("Using USB Webcam for video capture")
-  #global _videostream
   _videostream = cv2.VideoCapture(0)
   _videostream.set(cv2.cv.CV_CAP_PROP_FRAME_WIDTH, RESOLUTION[0])
   _videostream.set(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT, RESOLUTION[1])
@@ -46,7 +43,6 @@ else:
     sys.exit(255)
 
   def getFrame():
-      #global _videostream
       _, frame = _videostream.read()
       return frame
 
@@ -132,9 +128,21 @@ while(True):
     detection_faces_contrast_brightness += len(eq_contrast_brightness_faces)
     detection_faces_alt += len(alt_faces)
 
+    face_set = faces
+    if len(eq_brightness_faces) > len(face_set):
+      face_set = eq_brightness_faces
+    if len(eq_contrast_faces) > len(face_set):
+      face_set = eq_contrast_faces
+    if len(eq_adaptive_faces) > len(face_set):
+      face_set = eq_adaptive_faces
+    if len(eq_contrast_brightness_faces) > len(face_set):
+      face_set = eq_contrast_brightness_faces
+    if len(alt_faces) > len(face_set):
+      face_set = alt_faces
+
     logging.info("# {}, faces {}, eq_adaptive {}, eq_contrast {}, eq_brightness {}, eq_contrast_brightness {}, alt {}".format(frames, len(faces), len(eq_adaptive_faces), len(eq_contrast_faces), len(eq_brightness_faces), len(eq_contrast_brightness_faces), len(alt_faces)))
-    if len(faces) > 0:
-        face = findOneFace(faces)
+    if len(face_set) > 0:
+        face = findOneFace(face_set)
         (face_center, look_dir) = getCenteringCorrection(face, RESOLUTION)
         logging.info("face center is {}".format(face_center))
         logging.info("look direction (x,y) is {}".format(look_dir))
