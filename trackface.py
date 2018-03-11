@@ -6,8 +6,8 @@ if _DEBUG:
   logging.getLogger().setLevel(logging.DEBUG)
 else:
   logging.getLogger().setLevel(logging.INFO)
-_Pi = False
 _Pi = True
+_Pi = False
 
 import sys
 import time
