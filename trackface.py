@@ -6,8 +6,8 @@ if _DEBUG:
   logging.getLogger().setLevel(logging.DEBUG)
 else:
   logging.getLogger().setLevel(logging.INFO)
-_Pi = True
 _Pi = False
+_Pi = True
 
 import sys
 import time
@@ -80,6 +80,7 @@ brightness_faces_time = 0.0
 contrast_brightness_faces_time = 0.0
 adaptive_faces_time = 0.0
 alt_faces_time = 0.0
+alt_faces_gs_time = 0.0
 
 detection_faces = 0
 detection_faces_contrast_brightness = 0
@@ -87,6 +88,7 @@ detection_faces_brightness = 0
 detection_faces_contrast = 0
 detection_faces_adaptive = 0
 detection_faces_alt = 0
+detection_faces_gs_alt = 0
 while(True):
     # Capture frame-by-frame
     frame = getFrame()
@@ -121,12 +123,18 @@ while(True):
     alt_faces = findFaces(frame, alt_classifier, alt_profile_classifier)
     alt_faces_time += time.time() - start_time
 
+    start_time = time.time()
+    gs_image = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+    alt_gs_faces = findFaces(gs_image, alt_classifier, alt_profile_classifier)
+    alt_faces_gs_time += time.time() - start_time
+
     detection_faces += len(faces)
     detection_faces_brightness += len(eq_brightness_faces)
     detection_faces_contrast += len(eq_contrast_faces)
     detection_faces_adaptive += len(eq_adaptive_faces)
     detection_faces_contrast_brightness += len(eq_contrast_brightness_faces)
     detection_faces_alt += len(alt_faces)
+    detection_faces_gs_alt += len(alt_gs_faces)
 
     face_set = faces
     if len(eq_brightness_faces) > len(face_set):
@@ -139,13 +147,15 @@ while(True):
       face_set = eq_contrast_brightness_faces
     if len(alt_faces) > len(face_set):
       face_set = alt_faces
+    if len(alt_gs_faces) > len(face_set):
+      face_set = alt_gs_faces
 
-    logging.info("# {}, faces {}, eq_adaptive {}, eq_contrast {}, eq_brightness {}, eq_contrast_brightness {}, alt {}".format(frames, len(faces), len(eq_adaptive_faces), len(eq_contrast_faces), len(eq_brightness_faces), len(eq_contrast_brightness_faces), len(alt_faces)))
+    logging.info("{}, faces {}, eq_adaptive {}, eq_contrast {}, eq_brightness {}, eq_contrast_brightness {}, alt {}, gs_alt {}".format(frames, len(faces), len(eq_adaptive_faces), len(eq_contrast_faces), len(eq_brightness_faces), len(eq_contrast_brightness_faces), len(alt_faces), len(alt_gs_faces)))
     if len(face_set) > 0:
         face = findOneFace(face_set)
         (face_center, look_dir) = getCenteringCorrection(face, RESOLUTION)
-        logging.info("face center is {}".format(face_center))
-        logging.info("look direction (x,y) is {}".format(look_dir))
+        logging.debug("face center is {}".format(face_center))
+        logging.debug("look direction (x,y) is {}".format(look_dir))
         frameFace(frame, face)
         pointTo(look_dir, pan_tilt_state)
     # Display the resulting frame
@@ -153,7 +163,7 @@ while(True):
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 # When everything done, release the capture
-logging.info("faces {}, brightness {}, contrast {}, adaptive {}, contrast brightness {}, alt {}".format(detection_faces, detection_faces_brightness, detection_faces_contrast, detection_faces_adaptive, detection_faces_contrast_brightness, detection_faces_alt))
-logging.info("faces time {}, brightness time {}, contrast time {}, adaptive time {} contrast brightness {} alt time {}".format(faces_time, brightness_faces_time, contrast_faces_time, adaptive_faces_time, contrast_brightness_faces_time, alt_faces_time))
+logging.info("faces {}, brightness {}, contrast {}, adaptive {}, contrast brightness {}, alt {}, alt_gs {}".format(detection_faces, detection_faces_brightness, detection_faces_contrast, detection_faces_adaptive, detection_faces_contrast_brightness, detection_faces_alt, detection_faces_gs_alt))
+logging.info("faces time {}, brightness time {}, contrast time {}, adaptive time {} contrast brightness {} alt time {} alt_gs time {}".format(faces_time, brightness_faces_time, contrast_faces_time, adaptive_faces_time, contrast_brightness_faces_time, alt_faces_time, alt_faces_gs_time))
 closeVideo()
 cv2.destroyAllWindows()
