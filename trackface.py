@@ -13,7 +13,7 @@ import sys
 import time
 import cv2
 from followface import findFaces, findOneFace, getCenteringCorrection, frameFace, classifier, profile_classifier, alt_classifier, alt_profile_classifier
-RESOLUTION=(640, 480)
+RESOLUTION=(320, 240)
 
 if _Pi:
   logging.debug("Using PiCamera for video capture")
