@@ -38,7 +38,7 @@ def findFaces(cv2_image, classifier, alt_classifier):
     faces = classifier.detectMultiScale(
         grayscale_image,
         scaleFactor=1.1,
-        minSize=(30,30)
+        minSize=(15,15)
     )
     if len(faces):
             logging.debug("Found {0} front faces!".format(len(faces)))
@@ -47,7 +47,7 @@ def findFaces(cv2_image, classifier, alt_classifier):
         faces = alt_classifier.detectMultiScale(
             grayscale_image,
             scaleFactor=1.1,
-            minSize=(30,30)
+            minSize=(15,15)
         )
         if len(faces) > 0:
             logging.debug("Found {0} right profile faces!".format(len(faces)))
@@ -59,7 +59,7 @@ def findFaces(cv2_image, classifier, alt_classifier):
             left_faces = alt_classifier.detectMultiScale(
                 flipped_image,
                 scaleFactor=1.1,
-                minSize=(30,30)
+                minSize=(15,15)
             )
             if len(left_faces) > 0:
                 logging.debug("Found {0} left profile faces!".format(len(left_faces)))
