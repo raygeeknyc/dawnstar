@@ -1,13 +1,5 @@
-
-# coding: utf-8
-
 # # Object Detection Demo
 # Welcome to the object detection inference walkthrough!  This notebook will walk you step by step through the process of using a pre-trained model to detect objects in an image. Make sure to follow the [installation instructions](https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/installation.md) before you start.
-
-# # Imports
-
-# In[81]:
-
 
 import cv2
 import time
@@ -17,7 +9,7 @@ _videostream = cv2.VideoCapture(0)
 _videostream.set(cv2.cv.CV_CAP_PROP_FRAME_WIDTH, RESOLUTION[0])
 _videostream.set(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT, RESOLUTION[1])
 if not _videostream.isOpened():
-  logging.error("Video camera not opened")
+  print("Video camera not opened")
   sys.exit(255)
 
 def getFrame():
@@ -37,7 +29,6 @@ import zipfile
 
 from collections import defaultdict
 from io import StringIO
-from matplotlib import pyplot as plt
 from PIL import Image
 
 print("starting")
@@ -68,7 +59,6 @@ PATH_TO_CKPT = MODEL_NAME + '/frozen_inference_graph.pb'
 PATH_TO_LABELS = os.path.join('data', 'mscoco_label_map.pbtxt')
 
 NUM_CLASSES = 90
-
 
 # ## Download Model if it's not present 
 if not os.path.exists(MODEL_NAME):
@@ -109,9 +99,6 @@ category_index = label_map_util.create_category_index(categories)
 
 
 # ## Helper code
-
-# In[88]:
-
 
 def load_image_into_numpy_array(image):
   (im_width, im_height) = image.size
@@ -166,13 +153,18 @@ def run_inference_for_single_image(image, graph):
         output_dict['detection_masks'] = output_dict['detection_masks'][0]
   return output_dict
 
-frames=0
 frame = getFrame()
 print("images {}".format(frame.shape))
 print("Capturing frames")
+frames=0
+capture_time = 0
+detection_time = 0
+per_object_time = 0
 while(True):
   # Capture frame-by-frame
+  start = time.time()
   frame = getFrame()
+  capture_time += (time.time() - start)
   frames += 1
   # the array based representation of the image will be used later in order to prepare the
   # result image with boxes and labels on it.
@@ -180,7 +172,11 @@ while(True):
   # Expand dimensions since the model expects images to have shape: [1, None, None, 3]
   image_np_expanded = np.expand_dims(image_np, axis=0)
   # Actual detection.
+  start = time.time()
   output_dict = run_inference_for_single_image(image_np, detection_graph)
+  _detection_dur = (time.time() - start)
+  detection_time += _detection_dur
+
   # Visualization of the results of a detection.
   vis_util.visualize_boxes_and_labels_on_image_array(
       image_np,
@@ -191,14 +187,15 @@ while(True):
       instance_masks=output_dict.get('detection_masks'),
       use_normalized_coordinates=True,
       line_thickness=8)
-  #plt.figure(figsize=IMAGE_SIZE)
   start_time = time.time()
-  # Display the resulting frame
   cv2.imshow('frame',frame)
-  plt.imshow(image_np)
 
   if cv2.waitKey(1) & 0xFF == ord('q'):
       break
 # When everything done, release the capture
 closeVideo()
+print("frames: {}".format(frames))
+print("capture_time: {}".format(capture_time))
+print("detection_time: {}".format(detection_time))
+print("per_frame_time: {}".format(detection_time/frames))
 cv2.destroyAllWindows()
