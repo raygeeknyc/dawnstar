@@ -47,37 +47,14 @@ from object_detection.utils import ops as utils_ops
 if tf.__version__ < '1.4.0':
   raise ImportError('Please upgrade your tensorflow installation to v1.4.* or later!')
 
-
-# ## Env setup
-
-# In[82]:
-
-
-# This is needed to display the images.
-#get_ipython().magic(u'matplotlib inline')
-
-
-# ## Object detection imports
-# Here are the imports from the object detection module.
-
-# In[83]:
-
-
 from utils import label_map_util
-
 from utils import visualization_utils as vis_util
 
-
 # # Model preparation 
-
-# ## Variables
 # 
 # Any model exported using the `export_inference_graph.py` tool can be loaded here simply by changing `PATH_TO_CKPT` to point to a new .pb file.  
 # 
 # By default we use an "SSD with Mobilenet" model here. See the [detection model zoo](https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/detection_model_zoo.md) for a list of other models that can be run out-of-the-box with varying speeds and accuracies.
-
-# In[84]:
-
 
 # What model to download.
 MODEL_NAME = 'ssd_mobilenet_v1_coco_2017_11_17'
@@ -93,25 +70,24 @@ PATH_TO_LABELS = os.path.join('data', 'mscoco_label_map.pbtxt')
 NUM_CLASSES = 90
 
 
-# ## Download Model
-
-# In[85]:
-
-
-opener = urllib.request.URLopener()
-opener.retrieve(DOWNLOAD_BASE + MODEL_FILE, MODEL_FILE)
-tar_file = tarfile.open(MODEL_FILE)
-for file in tar_file.getmembers():
-  file_name = os.path.basename(file.name)
-  if 'frozen_inference_graph.pb' in file_name:
-    tar_file.extract(file, os.getcwd())
-
+# ## Download Model if it's not present 
+if not os.path.exists(MODEL_NAME):
+  print("Downloading {}".format(MODEL_FILE))
+  opener = urllib.request.URLopener()
+  opener.retrieve(DOWNLOAD_BASE + MODEL_FILE, MODEL_FILE)
+  print("Unpacking {}".format(MODEL_NAME))
+  tar_file = tarfile.open(MODEL_FILE)
+  for file in tar_file.getmembers():
+    file_name = os.path.basename(file.name)
+    if 'frozen_inference_graph.pb' in file_name:
+      tar_file.extract(file, os.getcwd())
+  try:
+    print("Removing {}".format(MODEL_FILE))
+    os.remove(MODEL_FILE)
+  except OSError:
+    print("Error removing {}".format(MODEL_FILE))
 
 # ## Load a (frozen) Tensorflow model into memory.
-
-# In[86]:
-
-
 detection_graph = tf.Graph()
 with detection_graph.as_default():
   od_graph_def = tf.GraphDef()
