@@ -3,13 +3,16 @@
 
 import cv2
 import time
+import logging
+logging.getLogger().setLevel(logging.INFO)
+
 
 RESOLUTION=(640, 480)
 _videostream = cv2.VideoCapture(0)
 _videostream.set(cv2.cv.CV_CAP_PROP_FRAME_WIDTH, RESOLUTION[0])
 _videostream.set(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT, RESOLUTION[1])
 if not _videostream.isOpened():
-  print("Video camera not opened")
+  logging.error("Video camera not opened")
   sys.exit(255)
 
 def getFrame():
@@ -31,7 +34,7 @@ from collections import defaultdict
 from io import StringIO
 from PIL import Image
 
-print("starting")
+logging.info("starting")
 sys.path.append("..")
 from object_detection.utils import ops as utils_ops
 
@@ -62,20 +65,20 @@ NUM_CLASSES = 90
 
 # ## Download Model if it's not present 
 if not os.path.exists(MODEL_NAME):
-  print("Downloading {}".format(MODEL_FILE))
+  logging.info("Downloading {}".format(MODEL_FILE))
   opener = urllib.request.URLopener()
   opener.retrieve(DOWNLOAD_BASE + MODEL_FILE, MODEL_FILE)
-  print("Unpacking {}".format(MODEL_NAME))
+  logging.info("Unpacking {}".format(MODEL_NAME))
   tar_file = tarfile.open(MODEL_FILE)
   for file in tar_file.getmembers():
     file_name = os.path.basename(file.name)
     if 'frozen_inference_graph.pb' in file_name:
       tar_file.extract(file, os.getcwd())
   try:
-    print("Removing {}".format(MODEL_FILE))
+    logging.info("Removing {}".format(MODEL_FILE))
     os.remove(MODEL_FILE)
   except OSError:
-    print("Error removing {}".format(MODEL_FILE))
+    logging.error("Error removing {}".format(MODEL_FILE))
 
 # ## Load a (frozen) Tensorflow model into memory.
 detection_graph = tf.Graph()
@@ -154,12 +157,13 @@ def run_inference_for_single_image(image, graph):
   return output_dict
 
 frame = getFrame()
-print("images {}".format(frame.shape))
-print("Capturing frames")
+logging.debug("images {}".format(frame.shape))
+logging.debug("Capturing frames")
 frames=0
 capture_time = 0
 detection_time = 0
 per_object_time = 0
+object_count = 0
 while(True):
   # Capture frame-by-frame
   start = time.time()
@@ -176,7 +180,11 @@ while(True):
   output_dict = run_inference_for_single_image(image_np, detection_graph)
   _detection_dur = (time.time() - start)
   detection_time += _detection_dur
-
+  confident_scores = [score for score in output_dict['detection_scores'] if score >= 0.5]
+  object_count += len(confident_scores)
+  _per_detection_time = _detection_dur / len(confident_scores) if len(confident_scores) > 0 else 0
+  per_object_time += _per_detection_time
+  
   # Visualization of the results of a detection.
   vis_util.visualize_boxes_and_labels_on_image_array(
       image_np,
@@ -194,8 +202,10 @@ while(True):
       break
 # When everything done, release the capture
 closeVideo()
-print("frames: {}".format(frames))
-print("capture_time: {}".format(capture_time))
-print("detection_time: {}".format(detection_time))
-print("per_frame_time: {}".format(detection_time/frames))
+logging.info("frames: {}".format(frames))
+logging.info("capture_time: {}".format(capture_time))
+logging.info("detection_time: {}".format(detection_time))
+logging.info("per_frame_time: {}".format(detection_time/frames))
+logging.info("average per_detection_time: {}".format(detection_time/object_count))
+logging.info("average per-frame per_object_time: {}".format(per_object_time/frames))
 cv2.destroyAllWindows()
