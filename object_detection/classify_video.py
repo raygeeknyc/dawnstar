@@ -4,6 +4,7 @@
 import cv2
 import time
 import logging
+import sys
 logging.getLogger().setLevel(logging.INFO)
 
 
@@ -17,6 +18,7 @@ if not _videostream.isOpened():
 
 def getFrame():
   _, frame = _videostream.read()
+
   return frame
 
 def closeVideo():
@@ -180,7 +182,7 @@ while(True):
   output_dict = run_inference_for_single_image(image_np, detection_graph)
   _detection_dur = (time.time() - start)
   detection_time += _detection_dur
-  confident_scores = [score for score in output_dict['detection_scores'] if score >= 0.5]
+  confident_scores = [score for score in np.squeeze(output_dict['detection_scores']) if score >= 0.5]
   object_count += len(confident_scores)
   _per_detection_time = _detection_dur / len(confident_scores) if len(confident_scores) > 0 else 0
   per_object_time += _per_detection_time
@@ -203,6 +205,7 @@ while(True):
 # When everything done, release the capture
 closeVideo()
 logging.info("frames: {}".format(frames))
+logging.info("objects: {}".format(object_count))
 logging.info("capture_time: {}".format(capture_time))
 logging.info("detection_time: {}".format(detection_time))
 logging.info("per_frame_time: {}".format(detection_time/frames))
