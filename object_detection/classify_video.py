@@ -114,6 +114,7 @@ def load_image_into_numpy_array(image):
 # # Detection
 def run_inference_for_single_image(image, graph):
   with graph.as_default():
+    config = tf.ConfigProto()
     with tf.Session() as sess:
       # Get handles to input and output tensors
       ops = tf.get_default_graph().get_operations()
@@ -145,8 +146,10 @@ def run_inference_for_single_image(image, graph):
       image_tensor = tf.get_default_graph().get_tensor_by_name('image_tensor:0')
 
       # Run inference
+      start = time.time()
       output_dict = sess.run(tensor_dict,
                              feed_dict={image_tensor: np.expand_dims(image, 0)})
+      inference_time = time.time() - start
 
       # all outputs are float32 numpy arrays, so convert types as appropriate
       output_dict['num_detections'] = int(output_dict['num_detections'][0])
@@ -156,13 +159,14 @@ def run_inference_for_single_image(image, graph):
       output_dict['detection_scores'] = output_dict['detection_scores'][0]
       if 'detection_masks' in output_dict:
         output_dict['detection_masks'] = output_dict['detection_masks'][0]
-  return output_dict
+  return (output_dict, inference_time)
 
 frame = getFrame()
 logging.debug("images {}".format(frame.shape))
 logging.debug("Capturing frames")
 frames=0
 capture_time = 0
+inference_time = 0
 detection_time = 0
 per_object_time = 0
 object_count = 0
@@ -179,8 +183,9 @@ while(True):
   image_np_expanded = np.expand_dims(image_np, axis=0)
   # Actual detection.
   start = time.time()
-  output_dict = run_inference_for_single_image(image_np, detection_graph)
+  output_dict, _inference_dur = run_inference_for_single_image(image_np, detection_graph)
   _detection_dur = (time.time() - start)
+  inference_time += _inference_dur
   detection_time += _detection_dur
   confident_scores = [score for score in np.squeeze(output_dict['detection_scores']) if score >= 0.5]
   object_count += len(confident_scores)
@@ -208,7 +213,9 @@ logging.info("frames: {}".format(frames))
 logging.info("objects: {}".format(object_count))
 logging.info("capture_time: {}".format(capture_time))
 logging.info("detection_time: {}".format(detection_time))
+logging.info("inference_time: {}".format(inference_time))
 logging.info("per_frame_time: {}".format(detection_time/frames))
-logging.info("average per_detection_time: {}".format(detection_time/object_count))
+logging.info("average per-frame detection_time: {}".format(detection_time/frames))
+logging.info("average per-frame inference_time: {}".format(inference_time/frames))
 logging.info("average per-frame per_object_time: {}".format(per_object_time/frames))
 cv2.destroyAllWindows()
