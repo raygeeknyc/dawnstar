@@ -22,7 +22,7 @@ def getFrame(compress=False):
   if not compress:
     return frame
 
-  encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 90]
+  encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 50]
   result, encoded_img = cv2.imencode('.jpg', frame, encode_param)
   decoded_img = cv2.imdecode(encoded_img, 1)
   return decoded_img
@@ -179,7 +179,7 @@ object_count = 0
 while(True):
   # Capture frame-by-frame
   start = time.time()
-  frame = getFrame()
+  frame = getFrame(True)
   capture_time += (time.time() - start)
   frames += 1
   # the array based representation of the image will be used later in order to prepare the
