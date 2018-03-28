@@ -16,10 +16,16 @@ if not _videostream.isOpened():
   logging.error("Video camera not opened")
   sys.exit(255)
 
-def getFrame():
+def getFrame(compress=False):
   _, frame = _videostream.read()
 
-  return frame
+  if not compress:
+    return frame
+
+  encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 90]
+  result, encoded_img = cv2.imencode('.jpg', frame, encode_param)
+  decoded_img = cv2.imdecode(encoded_img, 1)
+  return decoded_img
 
 def closeVideo():
   _videostream.release()
