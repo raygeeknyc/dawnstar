@@ -10,7 +10,7 @@ import time
 import io
 import sys
 import os, signal
-
+from utils import label_map_util
 
 import numpy as np
 import six.moves.urllib as urllib
@@ -19,15 +19,15 @@ import tarfile
 import tensorflow as tf
 import zipfile
 
+MAIN_POLL_DELAY_SECS = 1
 
 RESOLUTION=(640, 480)
 
-global STOP
-STOP = False
 
 def signal_handler(sig, frame):
     global STOP
     if STOP:
+        logging.debug("KILLING")
         signal.signal(signal.SIGINT, signal.SIG_IGN)
         os.kill(os.getpid(), signal.SIGTERM)
     logging.debug("SIGINT")
@@ -35,14 +35,18 @@ def signal_handler(sig, frame):
 signal.signal(signal.SIGINT, signal_handler)
 
 class Detector(multiprocessing.Process):
-    def __init__(self, transcript, log_queue, log_level):
+    sys.path.append(".")
+    FRAME_POLLING_DELAY_SECS = 0.1
+
+    def __init__(self, frame_i_q, detections_o_q, log_queue, log_level):
         super(Detector,self).__init__()
-        i, o = transcript
+        i, o = detections_o_q
         self._exit = multiprocessing.Event()
         logging.debug("Event initially {}".format(self._exit.is_set()))
         self._log_queue = log_queue
         self._log_level = log_level
-        self._transcript = i
+        self._output_q = i
+        self._stop_ingesting = False
         self._stop_processing = False
         self._work_queue = deque()
         self._PrepareModel()
@@ -107,13 +111,17 @@ class Detector(multiprocessing.Process):
         
     def run(self):
         try:
+            self._initLogging()
             logging.debug("***background active")
             logging.debug("process %s (%d)" % (self.name, os.getpid()))
+            logging.debug("creating ingester")
+            self._ingester = threading.Thread(target=self.ingestFrames)
             logging.debug("creating processor")
             self._processor = threading.Thread(target=self.performWork)
-            self._initLogging()
             logging.debug("starting processor")
             self._processor.start()
+            logging.debug("starting ingester")
+            self._ingester.start()
             logging.debug("waiting for exit event")
             self._exit.wait()
             logging.debug("exit event received")
@@ -121,44 +129,58 @@ class Detector(multiprocessing.Process):
         except Exception, e:
             logging.error("***background exception: {}".format(e))
         logging.debug("***background terminating")
+        self._stopIngesting()
         self._stopProcessing()
-        self._processor.join()
+        self._ingester.join()
+
+    def _stopIngesting(self):
+        self._stop_ingesting = True
 
     def _stopProcessing(self):
         self._stop_processing = True
+
+    def ingestFrames(self):
+        logging.debug("ingesting")
+        while not self._stop_ingesting:
+            time.sleep(self.__class__.FRAME_POLLING_DELAY_SECS)
 
     def performWork(self):
         logging.debug("performing")
         while not self._stop_processing:
             try:
                 message = self._work_queue.pop() 
-                self._transcript.send("i={}".format(message))
+                self._output_q.send("i={}".format(message))
             except IndexError:
                 pass
         logging.debug("stopped performing")
 
 if __name__ == '__main__':
+    global STOP
+    STOP = False
+
     log_stream = sys.stderr
-    log_queue = multiprocessing.Queue(100)
-    handler = multiprocessingloghandler.ParentMultiProcessingLogHandler(logging.StreamHandler(log_stream), log_queue)
+    log_q = multiprocessing.Queue(100)
+    handler = multiprocessingloghandler.ParentMultiProcessingLogHandler(logging.StreamHandler(log_stream), log_q)
     logging.getLogger('').addHandler(handler)
     logging.getLogger('').setLevel(_DEBUG)
 
     logging.debug("starting main")
-    transcript = multiprocessing.Pipe()
-    background_process = Detector(transcript, log_queue, logging.getLogger('').getEffectiveLevel())
+    detections_q = multiprocessing.Pipe()
+    frames_q = multiprocessing.Pipe()
+    background_process = Detector(frames_q, detections_q, log_q, logging.getLogger('').getEffectiveLevel())
     try:
-        i, o = transcript
+        i, o = detections_q
         background_process.start()
         logging.debug("waiting for messages")
         c = 0
         while not STOP:
-            message = o.recv()
-            logging.info("main received message: {}".format(message))
-            c += 1
-            if c > 5:
-                break;
-            time.sleep(2)
+            #message = o.recv()
+            #logging.info("main received message: {}".format(message))
+            #c += 1
+            #if c > 5:
+            #    break;
+            time.sleep(MAIN_POLL_DELAY_SECS)
+          
     except Exception, e:
         logging.error("Error in main: {}".format(e))
     logging.info("ending main")
@@ -169,5 +191,5 @@ if __name__ == '__main__':
     time.sleep(2)
     logging.info("logged: main done")
     logging.shutdown()
-    logging.error("main post-logging")
+    logging.info("main post-logging")
     sys.exit() 
