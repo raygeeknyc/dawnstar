@@ -1,5 +1,7 @@
 import logging
 _DEBUG = logging.DEBUG
+import numpy
+from PIL import Image
 
 import multiprocessingloghandler
 import StringIO
@@ -38,17 +40,20 @@ class Detector(multiprocessing.Process):
     sys.path.append(".")
     FRAME_POLLING_DELAY_SECS = 0.1
 
-    def __init__(self, frame_i_q, detections_o_q, log_queue, log_level):
+    def __init__(self, frames_i_q, detections_o_q, log_queue, log_level):
         super(Detector,self).__init__()
-        i, o = detections_o_q
+        o, _ = detections_o_q
+        _, i = frames_i_q
         self._exit = multiprocessing.Event()
         logging.debug("Event initially {}".format(self._exit.is_set()))
         self._log_queue = log_queue
         self._log_level = log_level
-        self._output_q = i
-        self._stop_ingesting = False
+        self._output_q = o
+        self._input_q = i
         self._stop_processing = False
         self._work_queue = deque()
+        self.frame_counter = 0
+        self.processed_counter = 0
         self._PrepareModel()
 
     def _initLogging(self):
@@ -129,27 +134,39 @@ class Detector(multiprocessing.Process):
         except Exception, e:
             logging.error("***background exception: {}".format(e))
         logging.debug("***background terminating")
-        self._stopIngesting()
         self._stopProcessing()
-        self._ingester.join()
+        self._processor.join()
+        self._exitReport()
 
-    def _stopIngesting(self):
-        self._stop_ingesting = True
+    def _exitReport(self):
+        logging.info("ingested {} frames".format(self.frame_counter))
+        logging.info("processed {} frames".format(self.processed_counter))
 
     def _stopProcessing(self):
         self._stop_processing = True
 
     def ingestFrames(self):
         logging.debug("ingesting")
-        while not self._stop_ingesting:
+        try:
+            while True:
+                logging.debug("waiting to receive frame")
+                frame = self._input_q.recv()
+                self.frame_counter += 1
+                logging.debug("ingested frame")
+                self._work_queue.append(frame) 
             time.sleep(self.__class__.FRAME_POLLING_DELAY_SECS)
+        except Exception, e:
+            logging.error("Error ingesting frame {}".format(e))
+        logging.debug("stopped ingesting")
 
     def performWork(self):
         logging.debug("performing")
         while not self._stop_processing:
             try:
-                message = self._work_queue.pop() 
-                self._output_q.send("i={}".format(message))
+                frame = self._work_queue.pop() 
+                logging.debug("processed frame")
+                self.processed_counter += 1
+                self._output_q.send("i={}".format(frame))
             except IndexError:
                 pass
         logging.debug("stopped performing")
@@ -168,22 +185,30 @@ if __name__ == '__main__':
     detections_q = multiprocessing.Pipe()
     frames_q = multiprocessing.Pipe()
     background_process = Detector(frames_q, detections_q, log_q, logging.getLogger('').getEffectiveLevel())
+    results_counter = 0
     try:
-        i, o = detections_q
+        _, o = detections_q
+        i, _ = frames_q
+        logging.debug("starting detector process")
         background_process.start()
-        logging.debug("waiting for messages")
         c = 0
+        pil_image = Image.open('../phone-addicts.jpg')
+        cv2_image = numpy.array(pil_image)
+
+        i.send(cv2_image)
+        i.send(cv2_image)
+        i.send(cv2_image)
         while not STOP:
-            #message = o.recv()
-            #logging.info("main received message: {}".format(message))
-            #c += 1
-            #if c > 5:
-            #    break;
+            logging.info("waiting for detection results")
+            message = o.recv()
+            results_counter += 1
+            logging.info("main received message {}: {}".format(results_counter, message))
             time.sleep(MAIN_POLL_DELAY_SECS)
           
     except Exception, e:
         logging.error("Error in main: {}".format(e))
     logging.info("ending main")
+    logging.debug("received {} results".format(results_counter))
     background_process.stop()
     logging.info("waiting for background process to exit")
     time.sleep(2)
