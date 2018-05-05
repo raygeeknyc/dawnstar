@@ -20,8 +20,9 @@ import tarfile
 import tensorflow as tf
 import zipfile
 
+MAIN_SEND_DELAY_SECS = 3.5
+
 RESOLUTION=(640, 480)
-MAIN_SEND_DELAY_SECS = 0.3
 
 
 def signal_handler(sig, frame):
@@ -40,14 +41,12 @@ class Detector(multiprocessing.Process):
 
     def __init__(self, frames_i_q, detections_o_q, log_queue, log_level):
         super(Detector,self).__init__()
-        o, _ = detections_o_q
-        _, i = frames_i_q
+        _, self._output_q = detections_o_q
+        self._input_writeback, self._input_q = frames_i_q
         self._exit = multiprocessing.Event()
         logging.debug("Event initially {}".format(self._exit.is_set()))
         self._log_queue = log_queue
         self._log_level = log_level
-        self._output_q = o
-        self._input_q = i
         self._stop_processing = False
         self._work_queue = Queue.Queue()
         self.frame_counter = 0
@@ -131,7 +130,8 @@ class Detector(multiprocessing.Process):
  
         except Exception, e:
             logging.error("***background exception: {}".format(e))
-        logging.debug("***background terminating")
+        logging.info("***background terminating")
+        self._stopIngesting()
         self._stopProcessing()
         self._processor.join()
         self._exitReport()
@@ -140,6 +140,11 @@ class Detector(multiprocessing.Process):
         logging.info("ingested {} frames".format(self.frame_counter))
         logging.info("processed {} frames".format(self.processed_counter))
 
+    def _stopIngesting(self):
+        self._stop_ingesting = True
+        self._input_writeback.close()
+        logging.debug("closed ingestion Pipe")
+
     def _stopProcessing(self):
         self._stop_processing = True
 
@@ -147,20 +152,24 @@ class Detector(multiprocessing.Process):
         logging.debug("ingesting")
         try:
             while True:
-                logging.debug("waiting for frames to ingest")
-                seq, frame = self._input_q.recv()
+                try:
+                    logging.debug("waiting for frames to ingest")
+                    seq, frame = self._input_q.recv()
+                except EOFError, e:
+                    logging.debug("EOF ingesting frames")
+                    break
+                logging.debug("ingested frame {} seq {}".format(self.frame_counter, seq))
                 self.frame_counter += 1
                 self._work_queue.put((seq, frame))
-                logging.debug("ingested frame {} seq {}".format(self.frame_counter, seq))
         except Exception, e:
             logging.error("Error ingesting frame {}".format(e))
         logging.debug("stopped ingesting")
 
     def _processImage(self):
-        logging.debug("performing")
+        logging.debug("processing")
         frame_counter = 0
         while not self._stop_processing:
-            logging.debug("waiting for ingested frames to process")
+            logging.info("waiting for ingested frames to process")
             skipped_frames = 0
             input_seq = None
             frame = None
@@ -175,13 +184,16 @@ class Detector(multiprocessing.Process):
                     else:
                         skipped_frames -= 1
                         frame_counter += 1
-                        logging.debug("processing frame {}, input seq {}, skipped {} frames".format(frame_counter, input_seq, skipped_frames))
+                        logging.info("processing frame {}, input seq {}, skipped {} frames".format(frame_counter, input_seq, skipped_frames))
                         break
+                except Exception, e:
+                    logging.warning("error getting work {}".format(e))
             output_dict = self._run_inference_for_single_image(frame)
-            logging.debug("processed frame")
             self.processed_counter += 1
+            logging.info("processed frame {}".format(self.processed_counter))
             self._output_q.send((input_seq, frame, output_dict))
-        logging.debug("stopped performing")
+            logging.info("sent frame {}".format(self.processed_counter))
+        logging.info("stopped processing")
 
     # object  Detection
     def _run_inference_for_single_image(self, image):
@@ -249,20 +261,26 @@ if __name__ == '__main__':
     background_process = Detector(frames_q, detections_q, log_q, logging.getLogger('').getEffectiveLevel())
     results_counter = 0
     try:
-        _, o = detections_q
+        o, _ = detections_q
         i, _ = frames_q
         logging.debug("starting detector process")
         background_process.start()
         frame_counter = 0
         for image_filename in sys.argv[1:]:
             if STOP:
+                logging.debug("interrupted while sending frames")
                 break
             pil_image = Image.open(image_filename)
             cv2_image = numpy.array(pil_image)
             frame_counter += 1
+            logging.debug("sending image {}".format(image_filename))
             i.send((frame_counter, cv2_image))
+            logging.debug("sent image {}".format(image_filename))
             time.sleep(MAIN_SEND_DELAY_SECS)
-        while True:
+        logging.debug("done sending frames")
+        i.close()
+        background_process.stop()
+        while not STOP:
             logging.info("waiting for detection results")
             input_seq, image, detection_results = o.recv()
             results_counter += 1
