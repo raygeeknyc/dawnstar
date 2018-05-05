@@ -185,8 +185,10 @@ while(True):
   # the array based representation of the image will be used later in order to prepare the
   # result image with boxes and labels on it.
   image_np = frame
+  ###
   # Expand dimensions since the model expects images to have shape: [1, None, None, 3]
-  image_np_expanded = np.expand_dims(image_np, axis=0)
+  #image_np_expanded = np.expand_dims(image_np, axis=0)
+  ###
   # Actual detection.
   start = time.time()
   output_dict, _inference_dur = run_inference_for_single_image(image_np, detection_graph)
