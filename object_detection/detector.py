@@ -1,6 +1,10 @@
 import logging
 _DEBUG = logging.INFO
+
+import sys
+sys.path.append("..")
 import numpy
+import cv2
 from PIL import Image
 import Queue
 import multiprocessingloghandler
@@ -9,9 +13,9 @@ import multiprocessing
 import threading
 import time
 import io
-import sys
 import os, signal
 from utils import label_map_util
+from utils import visualization_utils
 
 import numpy as np
 import six.moves.urllib as urllib
@@ -20,7 +24,7 @@ import tarfile
 import tensorflow as tf
 import zipfile
 
-MAIN_SEND_DELAY_SECS = 1.5
+MAIN_SEND_DELAY_SECS = 2.8
 
 RESOLUTION=(640, 480)
 
@@ -112,7 +116,7 @@ class Detector(multiprocessing.Process):
         
         label_map = label_map_util.load_labelmap(PATH_TO_LABELS)
         categories = label_map_util.convert_label_map_to_categories(label_map, max_num_classes=NUM_CLASSES, use_display_name=True)
-        category_index = label_map_util.create_category_index(categories)
+        self.category_index = label_map_util.create_category_index(categories)
         
     def run(self):
         try:
@@ -251,19 +255,34 @@ class Detector(multiprocessing.Process):
                     output_dict['detection_masks'] = output_dict['detection_masks'][0]
             return output_dict
 
-def receiveResults(results_pipe):
+def receiveResults(results_pipe, category_index):
     incoming_results, _ = results_pipe
     results_counter = 0
     while True:
         logging.debug("waiting for detection results")
         try:
-            input_seq, image, detection_results = incoming_results.recv()
+            input_seq, image, detection_dict = incoming_results.recv()
         except EOFError, e:
             logging.debug("EOF on results")
             break
         results_counter += 1
         logging.info("main received result {}, input seq {}".format(results_counter, input_seq))
+        showDetectionResults(image, detection_dict, category_index)
     logging.info("main received {} results".format(results_counter))
+
+def showDetectionResults(image, output_dict, category_index):
+    # Visualization of the results of a detection.
+    visualization_utils.visualize_boxes_and_labels_on_image_array(
+        image,
+        output_dict['detection_boxes'],
+        output_dict['detection_classes'],
+        output_dict['detection_scores'],
+        category_index,
+        instance_masks=output_dict.get('detection_masks'),
+        use_normalized_coordinates=True,
+        line_thickness=8)
+    cv2.imshow('objects', image)
+    cv2.waitKey(200)
 
 if __name__ == '__main__':
     global STOP
@@ -280,9 +299,9 @@ if __name__ == '__main__':
     frames_q = multiprocessing.Pipe()
     _, o  = detections_q
     i, _ = frames_q
-    receiver = threading.Thread(target=receiveResults, args=(detections_q,))
-    receiver.start()
     background_process = Detector(frames_q, detections_q, log_q, logging.getLogger('').getEffectiveLevel())
+    receiver = threading.Thread(target=receiveResults, args=(detections_q, background_process.category_index))
+    receiver.start()
     try:
         logging.debug("starting detector process")
         background_process.start()
@@ -311,6 +330,7 @@ if __name__ == '__main__':
     logging.debug("waiting for background process to exit")
     background_process.join()
     logging.debug("logged: main done")
+    cv2.destroyAllWindows()
     stop()
     logging.shutdown()
     logging.info("main exiting")
