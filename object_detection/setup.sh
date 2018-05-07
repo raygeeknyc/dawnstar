@@ -1,2 +1,2 @@
 #!/bin/bash
-export PYTHONPATH=/home/raymond/Documents/workspace/ohgee/
+export PYTHONPATH=$HOME/Documents/workspace/ohgee/
