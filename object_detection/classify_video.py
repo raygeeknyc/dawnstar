@@ -5,30 +5,52 @@ import cv2
 import time
 import logging
 import sys
-logging.getLogger().setLevel(logging.INFO)
+logging.getLogger().setLevel(logging.DEBUG)
 
+_Pi = False
+_Pi = True
 
 RESOLUTION=(640, 480)
-_videostream = cv2.VideoCapture(0)
-_videostream.set(cv2.cv.CV_CAP_PROP_FRAME_WIDTH, RESOLUTION[0])
-_videostream.set(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT, RESOLUTION[1])
-if not _videostream.isOpened():
-  logging.error("Video camera not opened")
-  sys.exit(255)
+if _Pi:
+  logging.debug("Using PiCamera for video capture")
+  from picamera import PiCamera
+  from picamera.array import PiRGBArray
+  _camera = PiCamera()
+  _camera.resolution = RESOLUTION
+  _camera.vflip = False
+  _camera.framerate = 32
+  _raw_capture = PiRGBArray(_camera, size=RESOLUTION)
 
-def getFrame(compress=False):
-  _, frame = _videostream.read()
+  def getFrame():
+      _raw_capture.truncate(0)
+      _camera.capture(_raw_capture, 'rgb')
+      encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 50]
+      result, encoded_img = cv2.imencode('.jpg', _raw_capture.array, encode_param)
+      decoded_img = cv2.imdecode(encoded_img, 1)
+      return decoded_img
 
-  if not compress:
-    return frame
+  def closeVideo():
+      _camera.close()
 
-  encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 50]
-  result, encoded_img = cv2.imencode('.jpg', frame, encode_param)
-  decoded_img = cv2.imdecode(encoded_img, 1)
-  return decoded_img
+else:
+  logging.debug("Using USB Webcam for video capture")
+  _videostream = cv2.VideoCapture(0)
+  _videostream.set(cv2.cv.CV_CAP_PROP_FRAME_WIDTH, RESOLUTION[0])
+  _videostream.set(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT, RESOLUTION[1])
+  if not _videostream.isOpened():
+    logging.error("Video camera not opened")
+    sys.exit(255)
 
-def closeVideo():
-  _videostream.release()
+  def getFrame():
+      _, frame = _videostream.read()
+      encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 50]
+      result, encoded_img = cv2.imencode('.jpg', frame, encode_param)
+      decoded_img = cv2.imdecode(encoded_img, 1)
+      return decoded_img
+
+  def closeVideo():
+      _videostream.release()
+
 
 import numpy as np
 import os
@@ -179,7 +201,7 @@ object_count = 0
 while(True):
   # Capture frame-by-frame
   start = time.time()
-  frame = getFrame(True)
+  frame = getFrame()
   capture_time += (time.time() - start)
   frames += 1
   # the array based representation of the image will be used later in order to prepare the
