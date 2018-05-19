@@ -1,5 +1,5 @@
 import logging
-_DEBUG = logging.INFO
+_DEBUG = logging.DEBUG
 
 import sys
 sys.path.append("..")
@@ -209,6 +209,7 @@ class Detector(multiprocessing.Process):
     # object  Detection
     def _run_inference_for_single_image(self, image):
         with self._detection_graph.as_default():
+            logging.debug("Setting up inference")
             config = tf.ConfigProto()
             with tf.Session() as sess:
                 # Get handles to input and output tensors
@@ -240,10 +241,13 @@ class Detector(multiprocessing.Process):
                     tensor_dict['detection_masks'] = tf.expand_dims(
                         detection_masks_reframed, 0)
     
+                logging.debug("Getting default tf graph")
                 image_tensor = tf.get_default_graph().get_tensor_by_name('image_tensor:0')
                 # Run inference
+                logging.debug("Running inference")
                 output_dict = sess.run(tensor_dict,
                     feed_dict={image_tensor: np.expand_dims(image, 0)})
+                logging.debug("Adjusting inference output")
     
                 # all outputs are float32 numpy arrays, so convert types as appropriate
                 output_dict['num_detections'] = int(output_dict['num_detections'][0])
