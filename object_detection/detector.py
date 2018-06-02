@@ -73,16 +73,15 @@ class Detector(multiprocessing.Process):
         # By default we use an "SSD with Mobilenet" model here. See the [detection model zoo](https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/detection_model_zoo.md) for a list of other models that can be run out-of-the-box with varying speeds and accuracies.
 
         # What model to download.
-        MODEL_NAME = 'ssd_mobilenet_v1_coco_2017_11_17'
-        MODEL_FILE = MODEL_NAME + '.tar.gz'
-        DOWNLOAD_BASE = 'http://download.tensorflow.org/models/object_detection/'
-        # Path to frozen detection graph. This is the actual model that is used for the object detection.
-        PATH_TO_CKPT = MODEL_NAME + '/frozen_inference_graph.pb'
-        
         # List of the strings that is used to add correct label for each box.
-        PATH_TO_LABELS = os.path.join('data', 'mscoco_label_map.pbtxt')
-        
-        NUM_CLASSES = 90
+        NUM_CLASSES = 90 
+        GRAPH_FILENAME = 'frozen_inference_graph.pb'
+        LABEL_FILENAME = 'mscoco_label_map.pbtxt'
+        MODEL_NAME = 'ssd_mobilenet_v1_coco_11_06_2017' #fast 
+        MODEL_FILE = MODEL_NAME + '.tar.gz' 
+        DOWNLOAD_BASE = 'http://download.tensorflow.org/models/object_detection/' 
+        PATH_TO_CKPT = os.path.join(MODEL_NAME, GRAPH_FILENAME)
+        PATH_TO_LABELS = os.path.join('data', LABEL_FILENAME)
         
         # ## Download Model if it's not present 
         if not os.path.exists(MODEL_NAME):
@@ -93,7 +92,7 @@ class Detector(multiprocessing.Process):
           tar_file = tarfile.open(MODEL_FILE)
           for file in tar_file.getmembers():
             file_name = os.path.basename(file.name)
-            if 'frozen_inference_graph.pb' in file_name:
+            if GRAPH_FILENAME in file_name:
               tar_file.extract(file, os.getcwd())
           try:
             logging.info("Removing {}".format(MODEL_FILE))
@@ -101,22 +100,16 @@ class Detector(multiprocessing.Process):
           except OSError:
             logging.error("Error removing {}".format(MODEL_FILE))
         
-        # ## Load a (frozen) Tensorflow model into memory.
         self._detection_graph = tf.Graph()
         with self._detection_graph.as_default():
-          od_graph_def = tf.GraphDef()
-          with tf.gfile.GFile(PATH_TO_CKPT, 'rb') as fid:
-            serialized_graph = fid.read()
-            od_graph_def.ParseFromString(serialized_graph)
-            tf.import_graph_def(od_graph_def, name='')
-        
-        
-        # ## Loading label map
-        # Label maps map indices to category names, so that when our convolution network predicts `5`, we know that this corresponds to `airplane`.  Here we use internal utility functions, but anything that returns a dictionary mapping integers to appropriate string labels would be fine
-        
-        label_map = label_map_util.load_labelmap(PATH_TO_LABELS)
-        categories = label_map_util.convert_label_map_to_categories(label_map, max_num_classes=NUM_CLASSES, use_display_name=True)
-        self.category_index = label_map_util.create_category_index(categories)
+            od_graph_def = tf.GraphDef()
+            with tf.gfile.GFile(PATH_TO_CKPT, 'rb') as fid:
+                serialized_graph = fid.read()
+                od_graph_def.ParseFromString(serialized_graph)
+                tf.import_graph_def(od_graph_def, name='')
+        self._label_map = label_map_util.load_labelmap(PATH_TO_LABELS) 
+        self._categories = label_map_util.convert_label_map_to_categories(self._label_map, max_num_classes=NUM_CLASSES, use_display_name=True) 
+        self._category_index = label_map_util.create_category_index(self._categories) 
         
     def run(self):
         try:
@@ -193,10 +186,11 @@ class Detector(multiprocessing.Process):
                         skipped_frames -= 1
                         frame_counter += 1
                         logging.debug("processing frame {}, input seq {}, skipped {} frames".format(frame_counter, input_seq, skipped_frames))
-                        output_dict = self._run_inference_for_single_image(frame)
+                        results = self._run_inference_for_single_image(frame)
+                        vis_util.visualize_boxes_and_labels_on_image_array(results) 
                         self.processed_counter += 1
                         logging.debug("processed frame {}, stop: {}".format(self.processed_counter, self._stop_processing))
-                        self._output_q.send((input_seq, frame, output_dict))
+                        self._output_q.send((input_seq, frame, _))
                         logging.debug("sent frame {}".format(self.processed_counter))
                         break
                 except Exception, e:
@@ -208,56 +202,50 @@ class Detector(multiprocessing.Process):
 
     # object  Detection
     def _run_inference_for_single_image(self, image):
-        with self._detection_graph.as_default():
-            logging.debug("Setting up inference")
-            config = tf.ConfigProto()
-            with tf.Session() as sess:
-                # Get handles to input and output tensors
-                ops = tf.get_default_graph().get_operations()
-                all_tensor_names = {output.name for op in ops for output in op.outputs}
-                tensor_dict = {}
-                for key in [
-                    'num_detections', 'detection_boxes', 'detection_scores',
-                    'detection_classes', 'detection_masks'
-                ]:
-                    tensor_name = key + ':0'
-                    if tensor_name in all_tensor_names:
-                        tensor_dict[key] = tf.get_default_graph().get_tensor_by_name(
-                        tensor_name)
-    
-                if 'detection_masks' in tensor_dict:
-                    # The following processing is only for single image
-                    detection_boxes = tf.squeeze(tensor_dict['detection_boxes'], [0])
-                    detection_masks = tf.squeeze(tensor_dict['detection_masks'], [0])
-                    # Reframe is required to translate mask from box coordinates to image coordinates and fit the image size.
-                    real_num_detection = tf.cast(tensor_dict['num_detections'][0], tf.int32)
-                    detection_boxes = tf.slice(detection_boxes, [0, 0], [real_num_detection, -1])
-                    detection_masks = tf.slice(detection_masks, [0, 0, 0], [real_num_detection, -1, -1])
-                    detection_masks_reframed = utils_ops.reframe_box_masks_to_image_masks(
-                        detection_masks, detection_boxes, image.shape[0], image.shape[1])
-                    detection_masks_reframed = tf.cast(
-                        tf.greater(detection_masks_reframed, 0.5), tf.uint8)
-                    # Follow the convention by adding back the batch dimension
-                    tensor_dict['detection_masks'] = tf.expand_dims(
-                        detection_masks_reframed, 0)
-    
-                logging.debug("Getting default tf graph")
-                image_tensor = tf.get_default_graph().get_tensor_by_name('image_tensor:0')
-                # Run inference
-                logging.debug("Running inference")
-                output_dict = sess.run(tensor_dict,
-                    feed_dict={image_tensor: np.expand_dims(image, 0)})
-                logging.debug("Adjusting inference output")
-    
-                # all outputs are float32 numpy arrays, so convert types as appropriate
-                output_dict['num_detections'] = int(output_dict['num_detections'][0])
-                output_dict['detection_classes'] = output_dict[
-                    'detection_classes'][0].astype(np.uint8)
-                output_dict['detection_boxes'] = output_dict['detection_boxes'][0]
-                output_dict['detection_scores'] = output_dict['detection_scores'][0]
-                if 'detection_masks' in output_dict:
-                    output_dict['detection_masks'] = output_dict['detection_masks'][0]
-            return output_dict
+###
+        with self._detection_graph.as_default(): 
+            with tf.Session(graph=self._detection_graph) as sess: 
+                # Expand dimensions since the model expects images to have shape: [1, None, None, 3] 
+                image_np_expanded = np.expand_dims(image, axis=0) 
+                     
+                # Definite input and output Tensors for detection_graph 
+                image_tensor = self._detection_graph.get_tensor_by_name('image_tensor:0') 
+                     
+                # Each box represents a part of the image where a particular object was detected. 
+                detection_boxes = self._detection_graph.get_tensor_by_name('detection_boxes:0') 
+                     
+                # Each score represent how level of confidence for each of the objects. 
+                # Score is shown on the result image, together with the class label. 
+                detection_scores = self._detection_graph.get_tensor_by_name('detection_scores:0') 
+                     
+                detection_classes = self._detection_graph.get_tensor_by_name('detection_classes:0') 
+                     
+                num_detections = self._detection_graph.get_tensor_by_name('num_detections:0') 
+                     
+                logging.debug("Running tf inference")
+                (boxes, scores, classes, num) = sess.run( 
+                    [detection_boxes, detection_scores, detection_classes, num_detections], 
+                    feed_dict={image_tensor: image_np_expanded}) 
+        
+                logging.debug("Ran tf inference")
+                output_dict = {}
+                output_dict['image'] = image_np
+                output_dict['boxes'] = np.squeeze(boxes)
+                output_dict['classes'] = np.squeeze(classes).astype(np.int32)
+                output_dict['scores'] = np.squeeze(scores)
+                return output_dict
+
+    def _apply_object_visualization_to_image(self, detection_results):
+        logging.debug('Visualization detected objects')
+        vis_util.visualize_boxes_and_labels_on_image_array( 
+              detection_results['image'], 
+              detection_results['boxes'], 
+              detection_results['classes'], 
+              detection_results['scores'], 
+              self._category_index, 
+              use_normalized_coordinates=True, 
+              line_thickness=8) 
+        logging.debug('Visualized detected objects')
 
 def receiveResults(results_pipe, category_index):
     incoming_results, _ = results_pipe
@@ -275,16 +263,6 @@ def receiveResults(results_pipe, category_index):
     logging.info("main received {} results".format(results_counter))
 
 def showDetectionResults(image, output_dict, category_index):
-    # Visualization of the results of a detection.
-    visualization_utils.visualize_boxes_and_labels_on_image_array(
-        image,
-        output_dict['detection_boxes'],
-        output_dict['detection_classes'],
-        output_dict['detection_scores'],
-        category_index,
-        instance_masks=output_dict.get('detection_masks'),
-        use_normalized_coordinates=True,
-        line_thickness=8)
     cv2.imshow('objects', image)
     cv2.waitKey(200)
 
@@ -304,7 +282,7 @@ if __name__ == '__main__':
     _, o  = detections_q
     i, _ = frames_q
     background_process = Detector(frames_q, detections_q, log_q, logging.getLogger('').getEffectiveLevel())
-    receiver = threading.Thread(target=receiveResults, args=(detections_q, background_process.category_index))
+    receiver = threading.Thread(target=receiveResults, args=(detections_q, background_process._category_index))
     receiver.start()
     try:
         logging.debug("starting detector process")
