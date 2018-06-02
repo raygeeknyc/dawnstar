@@ -187,10 +187,10 @@ class Detector(multiprocessing.Process):
                         frame_counter += 1
                         logging.debug("processing frame {}, input seq {}, skipped {} frames".format(frame_counter, input_seq, skipped_frames))
                         results = self._run_inference_for_single_image(frame)
-                        vis_util.visualize_boxes_and_labels_on_image_array(results) 
+                        self._apply_object_visualization_to_image(results) 
                         self.processed_counter += 1
                         logging.debug("processed frame {}, stop: {}".format(self.processed_counter, self._stop_processing))
-                        self._output_q.send((input_seq, frame, _))
+                        self._output_q.send((input_seq, results))
                         logging.debug("sent frame {}".format(self.processed_counter))
                         break
                 except Exception, e:
@@ -206,7 +206,7 @@ class Detector(multiprocessing.Process):
         with self._detection_graph.as_default(): 
             with tf.Session(graph=self._detection_graph) as sess: 
                 # Expand dimensions since the model expects images to have shape: [1, None, None, 3] 
-                image_np_expanded = np.expand_dims(image, axis=0) 
+                image_expanded = np.expand_dims(image, axis=0) 
                      
                 # Definite input and output Tensors for detection_graph 
                 image_tensor = self._detection_graph.get_tensor_by_name('image_tensor:0') 
@@ -225,11 +225,11 @@ class Detector(multiprocessing.Process):
                 logging.debug("Running tf inference")
                 (boxes, scores, classes, num) = sess.run( 
                     [detection_boxes, detection_scores, detection_classes, num_detections], 
-                    feed_dict={image_tensor: image_np_expanded}) 
+                    feed_dict={image_tensor: image_expanded}) 
         
                 logging.debug("Ran tf inference")
                 output_dict = {}
-                output_dict['image'] = image_np
+                output_dict['image'] = image
                 output_dict['boxes'] = np.squeeze(boxes)
                 output_dict['classes'] = np.squeeze(classes).astype(np.int32)
                 output_dict['scores'] = np.squeeze(scores)
@@ -237,7 +237,7 @@ class Detector(multiprocessing.Process):
 
     def _apply_object_visualization_to_image(self, detection_results):
         logging.debug('Visualization detected objects')
-        vis_util.visualize_boxes_and_labels_on_image_array( 
+        visualization_utils.visualize_boxes_and_labels_on_image_array( 
               detection_results['image'], 
               detection_results['boxes'], 
               detection_results['classes'], 
@@ -253,17 +253,17 @@ def receiveResults(results_pipe, category_index):
     while True:
         logging.debug("waiting for detection results")
         try:
-            input_seq, image, detection_dict = incoming_results.recv()
+            input_seq, detection_results = incoming_results.recv()
+            results_counter += 1
+            logging.info("main received result {}, input seq {}".format(results_counter, input_seq))
+            showDetectionResults(detection_results, category_index)
         except EOFError, e:
             logging.debug("EOF on results")
             break
-        results_counter += 1
-        logging.info("main received result {}, input seq {}".format(results_counter, input_seq))
-        showDetectionResults(image, detection_dict, category_index)
     logging.info("main received {} results".format(results_counter))
 
-def showDetectionResults(image, output_dict, category_index):
-    cv2.imshow('objects', image)
+def showDetectionResults(results_dict, category_index):
+    cv2.imshow('objects', results_dict['image'])
     cv2.waitKey(200)
 
 if __name__ == '__main__':

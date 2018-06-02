@@ -5,10 +5,10 @@ import cv2
 import time
 import logging
 import sys
-logging.getLogger().setLevel(logging.DEBUG)
+logging.getLogger().setLevel(logging.INFO)
 
-_Pi = False
 _Pi = True
+_Pi = False
 
 RESOLUTION=(640, 480)
 if _Pi:
@@ -43,6 +43,7 @@ else:
 
   def getFrame():
       _, frame = _videostream.read()
+      logging.debug("read frame")
       encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 50]
       result, encoded_img = cv2.imencode('.jpg', frame, encode_param)
       decoded_img = cv2.imdecode(encoded_img, 1)
