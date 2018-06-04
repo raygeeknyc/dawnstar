@@ -3,7 +3,6 @@ _DEBUG = logging.DEBUG
 
 import sys
 sys.path.append("..")
-import numpy
 import cv2
 from PIL import Image
 import Queue
@@ -16,13 +15,10 @@ import io
 import os, signal
 from utils import label_map_util
 from utils import visualization_utils
-
 import numpy as np
 import six.moves.urllib as urllib
-import sys
 import tarfile
 import tensorflow as tf
-import zipfile
 
 MAIN_SEND_DELAY_SECS = 2.8
 
@@ -43,7 +39,6 @@ def signal_handler(sig, frame):
 signal.signal(signal.SIGINT, signal_handler)
 
 class Detector(multiprocessing.Process):
-    sys.path.append(".")
     FRAME_POLLING_DELAY_SECS = 0.1
 
     def __init__(self, frames_i_q, detections_o_q, log_queue, log_level):
@@ -269,6 +264,7 @@ def showDetectionResults(results_dict, category_index):
 if __name__ == '__main__':
     global STOP
     STOP = False
+    sys.path.append(".")
 
     log_stream = sys.stderr
     log_q = multiprocessing.Queue(100)
@@ -294,7 +290,7 @@ if __name__ == '__main__':
                 logging.info("interrupted while sending frames")
                 break
             pil_image = Image.open(image_filename)
-            cv2_image = numpy.array(pil_image)
+            cv2_image = np.array(pil_image)
             frame_counter += 1
             logging.debug("sending image {}".format(image_filename))
             i.send((frame_counter, cv2_image))
