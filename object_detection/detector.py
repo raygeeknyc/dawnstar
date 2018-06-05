@@ -76,11 +76,16 @@ class Detector(object):
     def detectObjects(self, image):
         self.processed_counter += 1
         logging.debug("processing frame {}".format(self.processed_counter))
-        return self._run_inference_for_single_image(image)
+        start = time.time()
+        results = self._run_inference_for_single_image(image)
+        logging.debug("Detection took {}".format(time.time()-start))
+        return results
 
     def visualizeResults(self, results):
         logging.debug("Visualizing frame {}".format(self.processed_counter))
+        start = time.time()
         self._apply_object_visualization_to_image(results) 
+        logging.debug("Vis took {}".format(time.time()-start))
 
     # object  Detection
     def _run_inference_for_single_image(self, image):
