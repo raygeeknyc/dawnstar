@@ -2,6 +2,7 @@ import logging
 _DEBUG = logging.DEBUG
 
 import sys
+import psutil
 sys.path.append("..")
 import cv2
 from PIL import Image
@@ -145,6 +146,7 @@ if __name__ == '__main__':
     logging.getLogger().setLevel(_DEBUG)
 
     logging.debug("starting main")
+    logging.debug("Free vmem {}".format(psutil.virtual_memory().free))
     detector = Detector()
     try:
         logging.debug("Running detection")
@@ -164,4 +166,5 @@ if __name__ == '__main__':
     finally:
         detector.exitReport()
     logging.info("main exiting")
+    logging.debug("Free vmem {}".format(psutil.virtual_memory().free))
     sys.exit() 

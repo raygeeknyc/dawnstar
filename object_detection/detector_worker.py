@@ -2,6 +2,7 @@ import logging
 _DEBUG = logging.DEBUG
 
 import sys
+import psutil
 sys.path.append("..")
 import Queue
 import multiprocessingloghandler
@@ -179,6 +180,7 @@ if __name__ == '__main__':
     logging.getLogger('').setLevel(_DEBUG)
 
     logging.debug("starting main")
+    logging.debug("Free vmem {}".format(psutil.virtual_memory().free))
     detections_q = multiprocessing.Pipe()
     frames_q = multiprocessing.Pipe()
     _, o  = detections_q
@@ -188,7 +190,10 @@ if __name__ == '__main__':
     receiver.start()
     try:
         logging.debug("starting detector process")
+        logging.debug("Free vmem {}".format(psutil.virtual_memory().free))
         background_process.start()
+        logging.debug("started detector process")
+        logging.debug("Free vmem {}".format(psutil.virtual_memory().free))
         o.close()
         frame_counter = 0
         for image_filename in sys.argv[1:]:
@@ -218,4 +223,5 @@ if __name__ == '__main__':
     stop()
     logging.shutdown()
     logging.info("main exiting")
+    logging.debug("Free vmem {}".format(psutil.virtual_memory().free))
     sys.exit() 
