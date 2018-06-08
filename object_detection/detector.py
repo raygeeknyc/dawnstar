@@ -28,6 +28,7 @@ class Detector(object):
         super(Detector,self).__init__()
         self.processed_counter = 0
         self._PrepareModel()
+        self._StartSession()
 
     def _PrepareModel(self):
         # By default we use an "SSD with Mobilenet" model here. See the [detection model zoo](https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/detection_model_zoo.md) for a list of other models that can be run out-of-the-box with varying speeds and accuracies.
@@ -70,6 +71,16 @@ class Detector(object):
         self._label_map = label_map_util.load_labelmap(PATH_TO_LABELS) 
         self._categories = label_map_util.convert_label_map_to_categories(self._label_map, max_num_classes=NUM_CLASSES, use_display_name=True) 
         self._category_index = label_map_util.create_category_index(self._categories) 
+
+    def _StartSession(self):
+        with self._detection_graph.as_default(): 
+            self._tf_session =  tf.Session(graph=self._detection_graph)
+        
+    def Cleanup(self):
+        self._EndSession()
+
+    def _EndSession(self):
+        self._tf_session.close()
         
     def exitReport(self):
         logging.info("Processed {} frames".format(self.processed_counter))
@@ -78,21 +89,19 @@ class Detector(object):
         self.processed_counter += 1
         logging.debug("processing frame {}".format(self.processed_counter))
         start = time.time()
-        results = self._run_inference_for_single_image(image)
+        results = self._RunInferenceForImage(image)
         logging.debug("Detection took {}".format(time.time()-start))
         return results
 
     def visualizeResults(self, results):
         logging.debug("Visualizing frame {}".format(self.processed_counter))
         start = time.time()
-        self._apply_object_visualization_to_image(results) 
+        self._ApplyObjectVisualizationToImage(results) 
         logging.debug("Vis took {}".format(time.time()-start))
 
     # object  Detection
-    def _run_inference_for_single_image(self, image):
+    def _RunInferenceForImage(self, image):
 ###
-        with self._detection_graph.as_default(): 
-            with tf.Session(graph=self._detection_graph) as sess: 
                 # Expand dimensions since the model expects images to have shape: [1, None, None, 3] 
                 image_expanded = np.expand_dims(image, axis=0) 
                      
@@ -111,7 +120,7 @@ class Detector(object):
                 num_detections = self._detection_graph.get_tensor_by_name('num_detections:0') 
                      
                 logging.debug("Running tf inference")
-                (boxes, scores, classes, num) = sess.run( 
+                (boxes, scores, classes, num) = self._tf_session.run( 
                     [detection_boxes, detection_scores, detection_classes, num_detections], 
                     feed_dict={image_tensor: image_expanded}) 
         
@@ -123,7 +132,7 @@ class Detector(object):
                 output_dict['scores'] = np.squeeze(scores)
                 return output_dict
 
-    def _apply_object_visualization_to_image(self, detection_results):
+    def _ApplyObjectVisualizationToImage(self, detection_results):
         logging.debug('Visualization detected objects')
         visualization_utils.visualize_boxes_and_labels_on_image_array( 
               detection_results['image'], 
@@ -164,6 +173,7 @@ if __name__ == '__main__':
     except Exception, e:
         logging.error("Error in main: {}".format(e))
     finally:
+        detector.Cleanup()
         detector.exitReport()
     logging.info("main exiting")
     logging.debug("Free vmem {}".format(psutil.virtual_memory().free))
