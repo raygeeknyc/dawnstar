@@ -73,6 +73,7 @@ class Detector(object):
         self._category_index = label_map_util.create_category_index(self._categories) 
 
     def _StartSession(self):
+        logging.debug("Starting tf session")
         with self._detection_graph.as_default(): 
             self._tf_session =  tf.Session(graph=self._detection_graph)
         
@@ -82,10 +83,10 @@ class Detector(object):
     def _EndSession(self):
         self._tf_session.close()
         
-    def exitReport(self):
+    def ExitReport(self):
         logging.info("Processed {} frames".format(self.processed_counter))
 
-    def detectObjects(self, image):
+    def DetectObjects(self, image):
         self.processed_counter += 1
         logging.debug("processing frame {}".format(self.processed_counter))
         start = time.time()
@@ -93,7 +94,7 @@ class Detector(object):
         logging.debug("Detection took {}".format(time.time()-start))
         return results
 
-    def visualizeResults(self, results):
+    def VisualizeResults(self, results):
         logging.debug("Visualizing frame {}".format(self.processed_counter))
         start = time.time()
         self._ApplyObjectVisualizationToImage(results) 
@@ -145,7 +146,7 @@ class Detector(object):
         logging.debug('Visualized detected objects')
 
 
-def showDetectionResults(results_dict):
+def ShowDetectionResults(results_dict):
     cv2.imshow('objects', results_dict['image'])
     cv2.waitKey(200)
 
@@ -164,9 +165,9 @@ if __name__ == '__main__':
             pil_image = Image.open(image_filename)
             cv2_image = np.array(pil_image)
             logging.debug("Processing image {}".format(image_filename))
-            results = detector.detectObjects(cv2_image)
-            detector.visualizeResults(results)
-            showDetectionResults(results)
+            results = detector.DetectObjects(cv2_image)
+            detector.VisualizeResults(results)
+            ShowDetectionResults(results)
         logging.info("done sending frames")
     except KeyboardInterrupt, e:
         logging.info("interrupted while sending frames")
@@ -174,7 +175,7 @@ if __name__ == '__main__':
         logging.error("Error in main: {}".format(e))
     finally:
         detector.Cleanup()
-        detector.exitReport()
+        detector.ExitReport()
     logging.info("main exiting")
     logging.debug("Free vmem {}".format(psutil.virtual_memory().free))
     sys.exit() 

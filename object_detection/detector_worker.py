@@ -17,7 +17,7 @@ import cv2
 import numpy as np
 from detector import Detector
 
-MAIN_SEND_DELAY_SECS = 2.5
+MAIN_SEND_DELAY_SECS = 5.0
 
 RESOLUTION=(640, 480)
 
@@ -40,7 +40,6 @@ class DetectorWorker(multiprocessing.Process):
 
     def __init__(self, frames_i_q, detections_o_q, log_queue, log_level):
         super(DetectorWorker,self).__init__()
-        self._detector = Detector()
         self._output_writeback, self._output_q = detections_o_q
         self._input_writeback, self._input_q = frames_i_q
         self._exit = multiprocessing.Event()
@@ -51,7 +50,7 @@ class DetectorWorker(multiprocessing.Process):
         self.frame_counter = 0
         self.processed_counter = 0
 
-    def _initLogging(self):
+    def _InitLogging(self):
         handler = multiprocessingloghandler.ChildMultiProcessingLogHandler(self._log_queue)
         logging.getLogger(str(os.getpid())).addHandler(handler)
         logging.getLogger(str(os.getpid())).setLevel(self._log_level)
@@ -62,64 +61,65 @@ class DetectorWorker(multiprocessing.Process):
 
     def run(self):
         try:
-            self._initLogging()
-            logging.debug("***background active")
-            logging.debug("process %s (%d)" % (self.name, os.getpid()))
-            logging.debug("creating ingester")
-            self._ingester = threading.Thread(target=self._ingestFrames)
-            logging.debug("creating processor")
-            self._processor = threading.Thread(target=self._processImages)
-            logging.debug("starting processor")
+            self._InitLogging()
+            logging.debug("Process %s (%d)" % (self.name, os.getpid()))
+            logging.debug("Creating Detector")
+            self._detector = Detector()
+            logging.debug("Creating ingester")
+            self._ingester = threading.Thread(target=self._IngestFrames)
+            logging.debug("Creating processor")
+            self._processor = threading.Thread(target=self._ProcessImages)
+            logging.debug("Starting processor")
             self._processor.start()
-            logging.debug("starting ingester")
+            logging.debug("Starting ingester")
             self._ingester.start()
-            logging.debug("waiting for exit event")
+            logging.debug("Waiting for exit event")
             self._exit.wait()
-            logging.debug("exit event received")
+            logging.debug("Exit event received")
  
         except Exception, e:
-            logging.error("***background exception: {}".format(e))
-        logging.debug("***background terminating")
-        self._stopIngesting()
-        self._stopProcessing()
-        logging.debug("joining processor")
+            logging.error("Background exception: {}".format(e))
+        logging.debug("Background terminating")
+        self._StopIngesting()
+        self._StopProcessing()
+        logging.debug("Joining processor")
         self._processor.join()
-        self._exitReport()
+        self._ExitReport()
 
-    def _exitReport(self):
-        logging.info("ingested {} frames".format(self.frame_counter))
-        logging.info("processed {} frames".format(self.processed_counter))
+    def _ExitReport(self):
+        logging.info("Ingested {} frames".format(self.frame_counter))
+        logging.info("Processed {} frames".format(self.processed_counter))
 
-    def _stopIngesting(self):
+    def _StopIngesting(self):
         self._stop_ingesting = True
         self._input_writeback.close()
-        logging.debug("closed ingestion Pipe")
+        logging.debug("Closed ingestion Pipe")
 
-    def _stopProcessing(self):
+    def _StopProcessing(self):
         self._stop_processing = True
 
-    def _ingestFrames(self):
-        logging.debug("ingesting")
+    def _IngestFrames(self):
+        logging.debug("Ingesting")
         try:
             while True:
                 try:
-                    logging.debug("waiting for frames to ingest")
+                    logging.debug("Waiting for frames to ingest")
                     seq, frame = self._input_q.recv()
                 except EOFError, e:
                     logging.debug("EOF ingesting frames")
                     break
-                logging.debug("ingested frame {} seq {}".format(self.frame_counter, seq))
+                logging.debug("Ingested frame {} seq {}".format(self.frame_counter, seq))
                 self.frame_counter += 1
                 self._work_queue.put((seq, frame))
         except Exception, e:
             logging.error("Error ingesting frame {}".format(e))
-        logging.debug("stopped ingesting")
+        logging.debug("Stopped ingesting")
 
-    def _processImages(self):
-        logging.debug("processing")
+    def _ProcessImages(self):
+        logging.debug("Processing")
         frame_counter = 0
         while not self._stop_processing:
-            logging.debug("waiting for ingested frames to process")
+            logging.debug("Waiting for ingested frames to process")
             skipped_frames = 0
             input_seq = None
             frame = None
@@ -134,11 +134,11 @@ class DetectorWorker(multiprocessing.Process):
                     else:
                         skipped_frames -= 1
                         frame_counter += 1
-                        logging.debug("processing frame {}, input seq {}, skipped {} frames".format(frame_counter, input_seq, skipped_frames))
-                        results = self._detector.detectObjects(frame)
-                        self._detector.visualizeResults(results) 
+                        logging.debug("Processing frame {}, input seq {}, skipped {} frames".format(frame_counter, input_seq, skipped_frames))
+                        results = self._detector.DetectObjects(frame)
+                        logging.debug("Processed frame {}, input seq {}, skipped {} frames".format(frame_counter, input_seq, skipped_frames))
+                        self._detector.VisualizeResults(results) 
                         self.processed_counter += 1
-                        logging.debug("processed frame {}, stop: {}".format(self.processed_counter, self._stop_processing))
                         self._output_q.send((input_seq, results))
                         logging.debug("sent frame {}".format(self.processed_counter))
                         break
@@ -147,9 +147,10 @@ class DetectorWorker(multiprocessing.Process):
         logging.debug("closing output q")
         self._output_q.close()
         logging.debug("closed output q")
+        self._detector.Cleanup()
         logging.debug("stopped processing")
 
-def receiveResults(results_pipe):
+def ReceiveResults(results_pipe):
     incoming_results, _ = results_pipe
     results_counter = 0
     while True:
@@ -186,7 +187,7 @@ if __name__ == '__main__':
     _, o  = detections_q
     i, _ = frames_q
     background_process = DetectorWorker(frames_q, detections_q, log_q, logging.getLogger('').getEffectiveLevel())
-    receiver = threading.Thread(target=receiveResults, args=(detections_q,))
+    receiver = threading.Thread(target=ReceiveResults, args=(detections_q,))
     receiver.start()
     try:
         logging.debug("starting detector process")
