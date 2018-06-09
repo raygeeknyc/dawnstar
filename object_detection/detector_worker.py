@@ -1,4 +1,6 @@
 import logging
+import argparse
+
 _DEBUG = logging.DEBUG
 
 import sys
@@ -38,7 +40,7 @@ signal.signal(signal.SIGINT, signal_handler)
 class DetectorWorker(multiprocessing.Process):
     FRAME_POLLING_DELAY_SECS = 0.1
 
-    def __init__(self, frames_i_q, detections_o_q, log_queue, log_level):
+    def __init__(self, frames_i_q, detections_o_q, log_queue, log_level, visualize):
         super(DetectorWorker,self).__init__()
         self._output_writeback, self._output_q = detections_o_q
         self._input_writeback, self._input_q = frames_i_q
@@ -49,6 +51,7 @@ class DetectorWorker(multiprocessing.Process):
         self._work_queue = Queue.Queue()
         self.frame_counter = 0
         self.processed_counter = 0
+        self._visualize = visualize
 
     def _InitLogging(self):
         handler = multiprocessingloghandler.ChildMultiProcessingLogHandler(self._log_queue)
@@ -135,9 +138,12 @@ class DetectorWorker(multiprocessing.Process):
                         skipped_frames -= 1
                         frame_counter += 1
                         logging.debug("Processing frame {}, input seq {}, skipped {} frames".format(frame_counter, input_seq, skipped_frames))
+                        start = time.time()
                         results = self._detector.DetectObjects(frame)
                         logging.debug("Processed frame {}, input seq {}, skipped {} frames".format(frame_counter, input_seq, skipped_frames))
-                        self._detector.VisualizeResults(results) 
+                        logging.debug("Detection took {}".format(time.time()-start))
+                        if self._visualize:
+                            self._detector.VisualizeResults(results) 
                         self.processed_counter += 1
                         self._output_q.send((input_seq, results))
                         logging.debug("sent frame {}".format(self.processed_counter))
@@ -150,7 +156,7 @@ class DetectorWorker(multiprocessing.Process):
         self._detector.Cleanup()
         logging.debug("stopped processing")
 
-def ReceiveResults(results_pipe):
+def ReceiveResults(results_pipe, display_objects):
     incoming_results, _ = results_pipe
     results_counter = 0
     while True:
@@ -159,7 +165,8 @@ def ReceiveResults(results_pipe):
             input_seq, detection_results = incoming_results.recv()
             results_counter += 1
             logging.info("main received result {}, input seq {}".format(results_counter, input_seq))
-            showDetectionResults(detection_results)
+            if display_objects:
+                showDetectionResults(detection_results)
         except EOFError, e:
             logging.debug("EOF on results")
             break
@@ -172,6 +179,15 @@ def showDetectionResults(results_dict):
 if __name__ == '__main__':
     global STOP
     STOP = False
+    arg_parser = argparse.ArgumentParser(description='Object Detector Demo')
+    arg_parser.add_argument('--display', action='store_true', default=False)
+    arg_parser.add_argument('--images', nargs='+')
+    arg_values = arg_parser.parse_args()
+    display_objects = arg_values.display
+    image_filenames = arg_values.images
+    logging.debug('display_objects {}'.format(display_objects))
+    logging.debug('images {}'.format(image_filenames))
+
     sys.path.append(".")
 
     log_stream = sys.stderr
@@ -186,8 +202,8 @@ if __name__ == '__main__':
     frames_q = multiprocessing.Pipe()
     _, o  = detections_q
     i, _ = frames_q
-    background_process = DetectorWorker(frames_q, detections_q, log_q, logging.getLogger('').getEffectiveLevel())
-    receiver = threading.Thread(target=ReceiveResults, args=(detections_q,))
+    background_process = DetectorWorker(frames_q, detections_q, log_q, logging.getLogger('').getEffectiveLevel(), display_objects)
+    receiver = threading.Thread(target=ReceiveResults, args=(detections_q, display_objects,))
     receiver.start()
     try:
         logging.debug("starting detector process")
@@ -197,7 +213,7 @@ if __name__ == '__main__':
         logging.debug("Free vmem {}".format(psutil.virtual_memory().free))
         o.close()
         frame_counter = 0
-        for image_filename in sys.argv[1:]:
+        for image_filename in image_filenames:
             if STOP:
                 logging.info("interrupted while sending frames")
                 break
@@ -220,7 +236,8 @@ if __name__ == '__main__':
     logging.debug("waiting for background process to exit")
     background_process.join()
     logging.debug("logged: main done")
-    cv2.destroyAllWindows()
+    if display_objects:
+        cv2.destroyAllWindows()
     stop()
     logging.shutdown()
     logging.info("main exiting")

@@ -1,4 +1,5 @@
 import logging
+import argparse
 _DEBUG = logging.DEBUG
 
 import sys
@@ -145,15 +146,22 @@ class Detector(object):
               line_thickness=8) 
         logging.debug('Visualized detected objects')
 
-
 def ShowDetectionResults(results_dict):
     cv2.imshow('objects', results_dict['image'])
     cv2.waitKey(200)
 
 if __name__ == '__main__':
-    sys.path.append(".")
-
     logging.getLogger().setLevel(_DEBUG)
+    arg_parser = argparse.ArgumentParser(description='Object Detector Demo')
+    arg_parser.add_argument('--display', action='store_true', default=False)
+    arg_parser.add_argument('--images', nargs='+')
+    arg_values = arg_parser.parse_args()
+    display_objects = arg_values.display
+    image_filenames = arg_values.images
+    logging.debug('display_objects {}'.format(display_objects))
+    logging.debug('images {}'.format(image_filenames))
+
+    sys.path.append(".")
 
     logging.debug("starting main")
     logging.debug("Free vmem {}".format(psutil.virtual_memory().free))
@@ -161,13 +169,14 @@ if __name__ == '__main__':
     try:
         logging.debug("Running detection")
         frame_counter = 0
-        for image_filename in sys.argv[1:]:
+        for image_filename in image_filenames:
             pil_image = Image.open(image_filename)
             cv2_image = np.array(pil_image)
             logging.debug("Processing image {}".format(image_filename))
             results = detector.DetectObjects(cv2_image)
-            detector.VisualizeResults(results)
-            ShowDetectionResults(results)
+            if display_objects:
+                detector.VisualizeResults(results)
+                ShowDetectionResults(results)
         logging.info("done sending frames")
     except KeyboardInterrupt, e:
         logging.info("interrupted while sending frames")
@@ -176,6 +185,9 @@ if __name__ == '__main__':
     finally:
         detector.Cleanup()
         detector.ExitReport()
+    if display_objects:
+        cv2.destroyAllWindows()
+
     logging.info("main exiting")
     logging.debug("Free vmem {}".format(psutil.virtual_memory().free))
     sys.exit() 
