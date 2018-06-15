@@ -8,7 +8,6 @@ sys.path.append("..")
 import cv2
 from PIL import Image
 import Queue
-import multiprocessingloghandler
 import StringIO
 import multiprocessing
 import threading
@@ -50,6 +49,8 @@ class Detector(object):
           logging.info("Downloading {}".format(MODEL_FILE))
           opener = urllib.request.URLopener()
           opener.retrieve(DOWNLOAD_BASE + MODEL_FILE, MODEL_FILE)
+          logging.info("done")
+          sys.exit(-1)
           logging.info("Unpacking {}".format(MODEL_NAME))
           tar_file = tarfile.open(MODEL_FILE)
           for file in tar_file.getmembers():
