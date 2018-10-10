@@ -1,10 +1,14 @@
-#
 ###############
+#
 # Module to display Dawnstar test harness info
 # on a SSD1306 OLED display.
+# Display:
 # IP address, object detection stats, motor state
 #
 ###############
+import logging
+logging.getLogger('').setLevel(logging.DEBUG)
+
 import time
 import subprocess
 
@@ -23,6 +27,7 @@ def setup_display():
   # Clear display.
   disp.clear()
   disp.display()
+  logging.debug('/setup_display')
 
 def update_display(display):
   # Create blank image for drawing.
@@ -30,6 +35,7 @@ def update_display(display):
   width = disp.width
   height = disp.height
   image = Image.new('1', (width, height))
+  logging.debug('display {} x {}'.format(width, height))
 
   # Get drawing object to draw on image.
   draw = ImageDraw.Draw(image)
@@ -43,25 +49,37 @@ def update_display(display):
   ## Load default font.
   # font = ImageFont.load_default()
   font = graphics.Font()
-  font.LoadFont("fonts/5x7.bdf")
+  font.LoadFont('fonts/5x7.bdf')
   line_height = font.getsize()[1]
+  logging.debug('Font: {} x {}'.format(font.getSize()[0], font.getSize()[1]))
 
   draw.rectangle((0,0,width,height), outline=0, fill=0)
 
-  cmd = "hostname -I | cut -d\' \' -f1"
+  cmd = 'hostname -I | cut -d\" \" -f1'
   IP = subprocess.check_output(cmd, shell = True )
-  draw.text((x, y), "IP: " + str(IP),  font=font, fill=255)
+  draw.text((x, y), 'IP: ' + str(IP),  font=font, fill=255)
+  logging.debug('IP: {}'.format(str(IP)))
+
+  faces = 0
 
   y += font_height + 1
-  draw.text((x, y), "Faces: {}".format(0), font=font, fill=255)
+  draw.text((x, y), 'Faces: {}'.format(faces), font=font, fill=255)
+  logging.debug('Faces: {}'.format(faces))
+
+  face_bounds = (0,0)
+  face_zone = (0,0)
 
   y += font_height + 1
-  draw.text((x, y), "Largest face: {},{}  Zone: {}".format(0,0,(0,0)), font=font, fill=255)
+  draw.text((x, y), 'Largest face: {},{}  Zone: {}'.format(face_bounds, face_zone), font=font, fill=255)
+  logging.debug('Faces: {}'.format(face_bounds, face_zone))
+
+  left_motor_state = 0
+  right_motor_state = 0
 
   y += font_height + 1
   y += font_height + 1
-  draw.text((x, y), "Left motor: {}, Right motor: {}  Zone: {}".format(0,0), font=font, fill=255)
+  draw.text((x, y), 'Left motor: {}, Right motor: {}'.format(left_motor_state, right_motor_state), font=font, fill=255)
+  logging.debug('Left motor: {}, Right motor: {}: {}'.format(left_motor_state, right_motor_state))
 
-  # Display image.
   disp.image(image)
   disp.display()
