@@ -28,8 +28,18 @@ def setup_display():
   disp.clear()
   disp.display()
   logging.debug('/setup_display')
+  return disp
 
-def update_display(display):
+class DisplayInfo(object):
+  def __init__():
+    self.ip = "###.###.###.###"
+    self.right_motor = 0
+    self.left_motor = 0
+    self.faces = 0
+    self.tracking_bounds = (0, 0)
+    self.tracking_zone = (0, 0)
+
+def update_display(display, display_info):
   # Create blank image for drawing.
   # Make sure to create image with mode '1' for 1-bit color.
   width = disp.width
@@ -55,31 +65,39 @@ def update_display(display):
 
   draw.rectangle((0,0,width,height), outline=0, fill=0)
 
-  cmd = 'hostname -I | cut -d\" \" -f1'
-  IP = subprocess.check_output(cmd, shell = True )
-  draw.text((x, y), 'IP: ' + str(IP),  font=font, fill=255)
-  logging.debug('IP: {}'.format(str(IP)))
+  draw.text((x, y), 'IP: ' + display_info.ip,  font=font, fill=255)
+  logging.debug('IP: {}'.format(str(display_info.ip)))
 
   faces = 0
 
   y += font_height + 1
-  draw.text((x, y), 'Faces: {}'.format(faces), font=font, fill=255)
-  logging.debug('Faces: {}'.format(faces))
+  draw.text((x, y), 'Faces: {}'.format(display_info.faces), font=font, fill=255)
+  logging.debug('Faces: {}'.format(display_info.faces))
 
   face_bounds = (0,0)
   face_zone = (0,0)
 
   y += font_height + 1
-  draw.text((x, y), 'Largest face: {},{}  Zone: {}'.format(face_bounds, face_zone), font=font, fill=255)
-  logging.debug('Faces: {}'.format(face_bounds, face_zone))
+  draw.text((x, y), 'Tracking: {},{}  Zone: {}'.format(display_info.tracking_bounds, display_info.tracking_zone), font=font, fill=255)
+  logging.debug('Faces: {}'.format(display_info.tracking_bounds, display_info.tracking_zone))
 
   left_motor_state = 0
   right_motor_state = 0
 
   y += font_height + 1
   y += font_height + 1
-  draw.text((x, y), 'Left motor: {}, Right motor: {}'.format(left_motor_state, right_motor_state), font=font, fill=255)
-  logging.debug('Left motor: {}, Right motor: {}: {}'.format(left_motor_state, right_motor_state))
+  draw.text((x, y), 'Left motor: {}, Right motor: {}'.format(display_info.left_motor, display_info.right_motor), font=font, fill=255)
+  logging.debug('Left motor: {}, Right motor: {}: {}'.format(display_info.left_motor, display_info.right_motor))
 
   disp.image(image)
   disp.display()
+
+def main():
+  blank_info = DisplayInfo()
+  display = setup_display()
+  update_display(display, display_info)
+
+
+if __name__ == "__main__":
+  logging.info('display running as main')
+  main()
