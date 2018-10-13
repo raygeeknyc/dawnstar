@@ -7,7 +7,7 @@
 #
 ###############
 import logging
-logging.getLogger('').setLevel(logging.DEBUG)
+logging.getLogger('').setLevel(logging.INFO)
 
 import time
 
@@ -20,15 +20,16 @@ from PIL import ImageFont
 _RST_PIN = 24
 
 class DisplayInfo(object):
-  def __init__():
-    self.ip = "###.###.###.###"
+  def __init__(self):
+    self.ip = '###.###.###.###'
     self.right_motor = 0
     self.left_motor = 0
     self.faces = 0
-    self.tracking_bounds = (0, 0)
+    self.tracking_bounds = (1024, 1024)
     self.tracking_zone = (0, 0)
 
 class Display(object):
+  @staticmethod
   def _setup_display():
     # 128x64 display with hardware I2C:
     disp = Adafruit_SSD1306.SSD1306_128_64(rst=_RST_PIN)
@@ -43,7 +44,7 @@ class Display(object):
     self._info = info
     self._screen = Display._setup_display()
 
-  def show(display_info):
+  def refresh(self):
     # Create blank image for drawing.
     # Make sure to create image with mode '1' for 1-bit color.
     width = self._screen.width
@@ -61,37 +62,40 @@ class Display(object):
     y = 0
 
     ## Load default font.
-    # font = ImageFont.load_default()
-    font = graphics.Font()
-    font.LoadFont('fonts/5x7.bdf')
-    line_height = font.getsize()[1]
-    logging.debug('Font: {} x {}'.format(font.getSize()[0], font.getSize()[1]))
+    font = ImageFont.load_default()
+    #font = graphics.Font()
+    #font.LoadFont('fonts/5x7.bdf')
+    line_height = font.getsize(' ')[1]
+    logging.info('Font: {} x {}'.format(font.getsize(' ')[0], font.getsize(' ')[1]))
 
     draw.rectangle((0,0,width,height), outline=0, fill=0)
 
-    draw.text((x, y), 'IP: ' + display_info.ip,  font=font, fill=255)
-    logging.debug('IP: {}'.format(str(display_info.ip)))
+    draw.text((x, y), 'IP:{}'.format(str(self._info.ip)),  font=font, fill=255)
+    logging.info('IP:{}'.format(str(self._info.ip)))
 
     faces = 0
 
-    y += font_height + 1
-    draw.text((x, y), 'Faces: {}'.format(display_info.faces), font=font, fill=255)
-    logging.debug('Faces: {}'.format(display_info.faces))
+    y += line_height + 1
+    draw.text((x, y), 'Faces:{}'.format(self._info.faces), font=font, fill=255)
+    logging.info('Faces:{}'.format(self._info.faces))
 
     face_bounds = (0,0)
     face_zone = (0,0)
 
-    y += font_height + 1
-    draw.text((x, y), 'Tracking: {},{}  Zone: {}'.format(display_info.tracking_bounds, display_info.tracking_zone), font=font, fill=255)
-    logging.debug('Faces: {}'.format(display_info.tracking_bounds, display_info.tracking_zone))
+    y += line_height + 1
+    draw.text((x, y), 'Tracking:{}'.format(self._info.tracking_bounds), font=font, fill=255)
+    logging.info('Tracking:{}'.format(self._info.tracking_bounds))
+
+    y += line_height + 1
+    draw.text((x, y), '  Zone:{}'.format(self._info.tracking_zone), font=font, fill=255)
+    logging.info('Zone:{}'.format(self._info.tracking_zone))
 
     left_motor_state = 0
     right_motor_state = 0
 
-    y += font_height + 1
-    y += font_height + 1
-    draw.text((x, y), 'Left motor: {}, Right motor: {}'.format(display_info.left_motor, display_info.right_motor), font=font, fill=255)
-    logging.debug('Left motor: {}, Right motor: {}: {}'.format(display_info.left_motor, display_info.right_motor))
+    y += line_height + 1
+    draw.text((x, y), 'Left:{} Right:{}'.format(self._info.left_motor, self._info.right_motor), font=font, fill=255)
+    logging.info('Left:{} Right:{}'.format(self._info.left_motor, self._info.right_motor))
 
     self._screen.image(image)
     self._screen.display()

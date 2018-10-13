@@ -16,13 +16,14 @@ class Dawnstar(object):
     if not self._ip_address:
       self._ip_address = subprocess.check_output(Dawnstar._IP_CMD, shell = True )
       logging.debug('IP {}'.format(self._ip_address))
-      return self._ip_address
+    return self._ip_address
 
 robot = Dawnstar()
 print('Ip address: {}'.format(robot.get_ip_address()))
 
-screen = Display()
-
 info = DisplayInfo()
-info.ip = robot.get_ip_address
-screen.show(info)
+screen = Display(info)
+
+info.ip = robot.get_ip_address()
+while True:
+  screen.refresh()
