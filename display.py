@@ -1,10 +1,8 @@
 ###############
-#
 # Module to display Dawnstar test harness info
 # on a SSD1306 OLED display.
 # Display:
 # IP address, object detection stats, (L,R) motor state
-#
 ###############
 import logging
 logging.getLogger('').setLevel(logging.INFO)
