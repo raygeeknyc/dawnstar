@@ -174,17 +174,21 @@ def _cleanup(self):
 
 
 def main():
-  log_stream = sys.stderr
-  log_queue = multiprocessing.Queue(100)
-  handler = ParentMultiProcessingLogHandler(logging.StreamHandler(log_stream), log_queue)
-  logging.getLogger('').addHandler(handler)
-  logging.getLogger('').setLevel(_DEBUG)
+  try:
+    log_stream = sys.stderr
+    log_queue = multiprocessing.Queue(100)
+    handler = ParentMultiProcessingLogHandler(logging.StreamHandler(log_stream), log_queue)
+    logging.getLogger('').addHandler(handler)
+    logging.getLogger('').setLevel(_DEBUG)
 
-  image_queue = multiprocessing.Pipe()
-  image_producer = ImageProducer(image_queue, log_queue, logging.getLogger('').getEffectiveLevel())
-  image_producer.start()
-  unused, _ = image_queue
-  unused.close()
+    image_queue = multiprocessing.Pipe()
+    image_producer = ImageProducer(image_queue, log_queue, logging.getLogger('').getEffectiveLevel())
+    image_producer.start()
+    unused, _ = image_queue
+    unused.close()
+  except Exception, e:
+    logging.exception("Error raised in main()")
+    sys.exit(-1)
 
 if __name__ == '__main__':
   main()
