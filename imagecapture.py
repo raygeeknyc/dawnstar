@@ -40,7 +40,7 @@ signal.signal(signal.SIGINT, signal_handler)
 
 EMPTY_LABELS = []
 
-class ImageAnalyzer(multiprocessing.Process):
+class ImageProducer(multiprocessing.Process):
     def __init__(self, vision_queue, log_queue, logging_level):
         multiprocessing.Process.__init__(self)
         self._log_queue = log_queue
@@ -171,3 +171,20 @@ def _cleanup(self):
     logging.debug("cleanup")
     self._camera.close()
     self._vision_queue.close()
+
+
+def main():
+  log_stream = sys.stderr
+  log_queue = multiprocessing.Queue(100)
+  handler = ParentMultiProcessingLogHandler(logging.StreamHandler(log_stream), log_queue)
+  logging.getLogger('').addHandler(handler)
+  logging.getLogger('').setLevel(_DEBUG)
+
+  image_queue = multiprocessing.Pipe()
+  image_producer = ImageProducer(image_queue, log_queue, logging.getLogger('').getEffectiveLevel())
+  image_producer.start()
+  unused, _ = image_queue
+  unused.close()
+
+if __name__ == '__main__':
+  main()
