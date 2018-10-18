@@ -62,31 +62,18 @@ class ImageProducer(multiprocessing.Process):
         logging.getLogger(str(os.getpid())).addHandler(handler)
         logging.getLogger(str(os.getpid())).setLevel(self._logging_level)
 
-    def _capture_camera_frame(self):
-        s=time.time()
-        self._image_buffer.seek(0)
-        self._camera.capture(self._image_buffer, format="jpeg", use_video_port=True)
-        self._image_buffer.seek(0)
-        image = Image.open(self._image_buffer)
-        image_pixels = image.load()
-        self._image_buffer.seek(0)
-        image = self._image_buffer.getvalue()
-        self._last_frame_at = time.time()
-        logging.debug("_capture_camera_frame took {}".format(time.time()-s))
-        return (image, image_pixels)
-
     def get_next_frame(self):
         delay = (self._last_frame_at + self._frame_delay_secs) - time.time()
         if delay > 0:
             time.sleep(delay)
-        self._current_frame = self._capture_camera_frame()
+        self._current_frame = self._get_frame()
 
     def calculate_image_difference(self):
         "Detect changes in the green channel."
         changed_pixels = 0
-        for x in xrange(self._camera.resolution[0]):
-            for y in xrange(self._camera.resolution[1]):
-                if abs(self._current_frame[1][x,y][1] - self._prev_frame[1][x,y][1]) > PIXEL_SHIFT_SENSITIVITY:
+        for x in xrange(RESOLUTION[0]):
+            for y in xrange(RESOLUTION[1]):
+                if abs(self._current_frame[x,y][1] - self._prev_frame[x,y][1]) > PIXEL_SHIFT_SENSITIVITY:
                     changed_pixels += 1
         self._prev_frame = self._current_frame
         return changed_pixels
@@ -95,8 +82,8 @@ class ImageProducer(multiprocessing.Process):
         "Detect changes in the green channel."
         s=time.time()
         changed_pixels = 0
-        for x in xrange(self._camera.resolution[0]):
-            for y in xrange(self._camera.resolution[1]):
+        for x in xrange(RESOLUTION[0]):
+            for y in xrange(RESOLUTION[1]):
                 if abs(self._current_frame[1][x,y][1] - self._prev_frame[1][x,y][1]) > PIXEL_SHIFT_SENSITIVITY:
                     changed_pixels += 1
             if changed_pixels >= changed_pixels_threshold:
@@ -109,17 +96,18 @@ class ImageProducer(multiprocessing.Process):
         logging.debug("Training motion")
         trained = False
         try:
-            self._camera.start_preview(fullscreen=False, window=(100,100,self._camera.resolution[0], self._camera.resolution[1]))
             self._motion_threshold = 9999
             self.get_next_frame()
-            self._prev_frame = self._capture_camera_frame()
+            self._prev_frame = self._get_frame()
             for i in range(TRAINING_SAMPLES):
                 self.get_next_frame()
                 motion = self.calculate_image_difference()
                 self._motion_threshold = min(motion, self._motion_threshold)
             trained = True
-        finally:
-            self._camera.stop_preview()
+        except Exception, e:
+            logging.exception("Error training motion")
+            trained = False
+            sys.exit(1)
         logging.debug("Trained {}".format(trained))
         return trained
 
@@ -164,7 +152,7 @@ class ImageProducer(multiprocessing.Process):
                     self.get_next_frame()
                     self._prev_frame = self._current_frame
             except Exception, e:
-                logging.error("Error in analysis: {}".format(e))
+                logging.exception("Error in capture_frames")
         logging.debug("Exiting vision capture thread")
         self._cleanup()
 
@@ -173,19 +161,22 @@ def _cleanup(self):
 
 class WebcamImageProducer(ImageProducer):
   def _init_camera(self):
-    self._videostream = cv2.VideoCapture(0)
-    self._videostream.set(cv2.cv.CV_CAP_PROP_FRAME_WIDTH, RESOLUTION[0])
-    self._videostream.set(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT, RESOLUTION[1])
-    if not self._videostream.isOpened():
+    self._camera = cv2.VideoCapture(0)
+
+    if not self._camera.isOpened():
       logging.error("Video camera not opened")
       sys.exit(255)
 
-  def getFrame(self):
-      _, frame = _videostream.read()
+    self._camera.set(3, RESOLUTION[0])
+    self._camera.set(4, RESOLUTION[1])
+
+
+  def _get_frame(self):
+      _, frame = self._camera.read()
       return frame
 
-  def closeVideo(self):
-      self._videostream.release()
+  def _close_video(self):
+      self._camera.release()
 
 class PiImageProducer(ImageProducer):
   def _init_camera(self):
@@ -195,12 +186,12 @@ class PiImageProducer(ImageProducer):
     self._camera.framerate = 32
     self._raw_capture = PiRGBArray(_camera, size=RESOLUTION)
 
-  def getFrame(self):
+  def _get_frame(self):
       self._raw_capture.truncate(0)
       self._camera.capture(_raw_capture, 'rgb')
       return self._raw_capture.array
 
-  def closeVideo(self):
+  def _close_video(self):
       self._camera.close()
 
 
