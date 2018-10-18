@@ -1,3 +1,6 @@
+_Pi = True
+_Pi = False
+
 import logging
 # Used only if this is run as main
 _DEBUG = logging.DEBUG
@@ -5,10 +8,8 @@ _DEBUG = logging.DEBUG
 # Import the packages we need for drawing and displaying images
 from PIL import Image, ImageDraw
 
-from picamera import PiCamera
-
 import multiprocessing
-from multiprocessingloghandler import ChildMultiProcessingLogHandler
+from multiprocessingloghandler import ChildMultiProcessingLogHandler, ParentMultiProcessingLogHandler
 from random import randint
 import io
 import sys
@@ -168,9 +169,39 @@ class ImageProducer(multiprocessing.Process):
         self._cleanup()
 
 def _cleanup(self):
-    logging.debug("cleanup")
-    self._camera.close()
     self._vision_queue.close()
+
+class WebcamImageProducer(ImageProducer):
+  def _init_camera(self):
+    self._videostream = cv2.VideoCapture(0)
+    self._videostream.set(cv2.cv.CV_CAP_PROP_FRAME_WIDTH, RESOLUTION[0])
+    self._videostream.set(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT, RESOLUTION[1])
+    if not self._videostream.isOpened():
+      logging.error("Video camera not opened")
+      sys.exit(255)
+
+  def getFrame(self):
+      _, frame = _videostream.read()
+      return frame
+
+  def closeVideo(self):
+      self._videostream.release()
+
+class PiImageProducer(ImageProducer):
+  def _init_camera(self):
+    self._camera = PiCamera()
+    self._camera.resolution = RESOLUTION
+    self._camera.vflip = False
+    self._camera.framerate = 32
+    self._raw_capture = PiRGBArray(_camera, size=RESOLUTION)
+
+  def getFrame(self):
+      self._raw_capture.truncate(0)
+      self._camera.capture(_raw_capture, 'rgb')
+      return self._raw_capture.array
+
+  def closeVideo(self):
+      self._camera.close()
 
 
 def main():
@@ -182,13 +213,23 @@ def main():
     logging.getLogger('').setLevel(_DEBUG)
 
     image_queue = multiprocessing.Pipe()
-    image_producer = ImageProducer(image_queue, log_queue, logging.getLogger('').getEffectiveLevel())
-    image_producer.start()
+    image_producer = _frame_provider(image_queue, log_queue, logging.getLogger('').getEffectiveLevel())
+
     unused, _ = image_queue
     unused.close()
+    image_producer.start()
   except Exception, e:
     logging.exception("Error raised in main()")
     sys.exit(-1)
+
+if _Pi:
+  logging.debug("Using PiCamera for video capture")
+  from picamera import PiCamera
+  from picamera.array import PiRGBArray
+  _frame_provider = PiImageProducer
+else:
+  import cv2
+  _frame_provider = WebcamImageProducer
 
 if __name__ == '__main__':
   main()
