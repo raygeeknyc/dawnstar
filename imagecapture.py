@@ -33,9 +33,10 @@ POLL_SECS = 0.1
 def signal_handler(sig, frame):
     global STOP
     if STOP:
+        logging.debug("SIGTERM")
         signal.signal(signal.SIGINT, signal.SIG_IGN)
         os.kill(os.getpid(), signal.SIGTERM)
-    logging.debug("SIGINT")
+    logging.debug("STOP")
     STOP = True
 signal.signal(signal.SIGINT, signal_handler)
 
@@ -52,6 +53,7 @@ class ImageProducer(multiprocessing.Process):
         self._stop_analyzing = False
         self._last_frame_at = 0.0
         self._frame_delay_secs = 1.0/CAPTURE_RATE_FPS
+        self._current_frame_seq = 0
 
     def stop(self):
         logging.debug("***analysis received shutdown")
@@ -67,6 +69,7 @@ class ImageProducer(multiprocessing.Process):
         if delay > 0:
             time.sleep(delay)
         self._current_frame = self._get_frame()
+        self._current_frame_seq += 1
 
     def calculate_image_difference(self):
         "Detect changes in the green channel."
@@ -140,14 +143,15 @@ class ImageProducer(multiprocessing.Process):
                 self.get_next_frame()
                 if self.is_image_difference_over_threshold(self._motion_threshold):
                     logging.debug("Motion detected")
-                    self._vision_queue.send(self._current_frame)
+                    self._vision_queue.send((self._current_frame_seq, self._current_frame))
         except Exception, e:
             logging.exception("Error in capture_frames")
         logging.debug("Exiting vision capture thread")
         self._cleanup()
 
-def _cleanup(self):
-    self._vision_queue.close()
+    def _cleanup(self):
+        logging.debug("closing image queue")
+        self._vision_queue.close()
 
 class WebcamImageProducer(ImageProducer):
   def _init_camera(self):
@@ -184,8 +188,20 @@ class PiImageProducer(ImageProducer):
   def _close_video(self):
       self._camera.close()
 
+def consume_images(image_queue):
+    logging.info("image consumer started")
+    _, incoming_images = image_queue
+    try:
+        while True:
+            frame_seq, image = incoming_images.recv()
+            logging.info("Frame {} received".format(frame_seq))
+    except EOFError:
+        logging.debug("Done watching")
 
 def main():
+  global STOP
+  STOP = False
+
   try:
     log_stream = sys.stderr
     log_queue = multiprocessing.Queue(100)
@@ -195,13 +211,26 @@ def main():
 
     image_queue = multiprocessing.Pipe()
     image_producer = _frame_provider(image_queue, log_queue, logging.getLogger("").getEffectiveLevel())
+    image_producer.start()
 
     unused, _ = image_queue
     unused.close()
-    image_producer.start()
+
+    image_consumer = threading.Thread(target = consume_images, args=(image_queue,))
+    image_consumer.start()
+    logging.info("waiting for stop signal")
+    while not STOP:
+        time.sleep(POLL_SECS)
+    logging.info("STOP seen in main")
+ 
   except Exception, e:
     logging.exception("Error raised in main()")
-    sys.exit(-1)
+  finally:
+    logging.debug("Ending")
+    image_producer.stop()
+    image_producer.join()
+    logging.debug("background process returned, exiting main process")
+    sys.exit(0)
 
 if _Pi:
   logging.debug("Using PiCamera for video capture")
