@@ -73,23 +73,13 @@ class ImageProducer(multiprocessing.Process):
         changed_pixels = 0
         for x in xrange(RESOLUTION[0]):
             for y in xrange(RESOLUTION[1]):
-                if abs(self._current_frame[x,y][1] - self._prev_frame[x,y][1]) > PIXEL_SHIFT_SENSITIVITY:
+                if abs(int(self._current_frame[y,x][1]) - int(self._prev_frame[y,x][1])) > PIXEL_SHIFT_SENSITIVITY:
                     changed_pixels += 1
         self._prev_frame = self._current_frame
         return changed_pixels
 
     def is_image_difference_over_threshold(self, changed_pixels_threshold):
-        "Detect changes in the green channel."
-        s=time.time()
-        changed_pixels = 0
-        for x in xrange(RESOLUTION[0]):
-            for y in xrange(RESOLUTION[1]):
-                if abs(self._current_frame[1][x,y][1] - self._prev_frame[1][x,y][1]) > PIXEL_SHIFT_SENSITIVITY:
-                    changed_pixels += 1
-            if changed_pixels >= changed_pixels_threshold:
-                break
-        self._prev_frame = self._current_frame
-        logging.debug("is_image_difference_over_threshold took {}".format(time.time()-s))
+        changed_pixels = self.calculate_image_difference()
         return changed_pixels >= changed_pixels_threshold
 
     def _train_motion(self):
@@ -98,8 +88,8 @@ class ImageProducer(multiprocessing.Process):
         try:
             self._motion_threshold = 9999
             self.get_next_frame()
-            self._prev_frame = self._get_frame()
             for i in range(TRAINING_SAMPLES):
+                self._prev_frame = self._get_frame()
                 self.get_next_frame()
                 motion = self.calculate_image_difference()
                 self._motion_threshold = min(motion, self._motion_threshold)
@@ -143,16 +133,16 @@ class ImageProducer(multiprocessing.Process):
                 break
         logging.info("Trained motion detection {}".format(self._motion_threshold))
     def _capture_frames(self):
-        while not self._stop_capturing:
-            try:
+        try:
+            self.get_next_frame()
+            while not self._stop_capturing:
+                self._prev_frame = self._current_frame
                 self.get_next_frame()
                 if self.is_image_difference_over_threshold(self._motion_threshold):
                     logging.debug("Motion detected")
                     self._vision_queue.send(self._current_frame)
-                    self.get_next_frame()
-                    self._prev_frame = self._current_frame
-            except Exception, e:
-                logging.exception("Error in capture_frames")
+        except Exception, e:
+            logging.exception("Error in capture_frames")
         logging.debug("Exiting vision capture thread")
         self._cleanup()
 
@@ -188,7 +178,7 @@ class PiImageProducer(ImageProducer):
 
   def _get_frame(self):
       self._raw_capture.truncate(0)
-      self._camera.capture(_raw_capture, 'rgb')
+      self._camera.capture(_raw_capture, "rgb")
       return self._raw_capture.array
 
   def _close_video(self):
@@ -200,11 +190,11 @@ def main():
     log_stream = sys.stderr
     log_queue = multiprocessing.Queue(100)
     handler = ParentMultiProcessingLogHandler(logging.StreamHandler(log_stream), log_queue)
-    logging.getLogger('').addHandler(handler)
-    logging.getLogger('').setLevel(_DEBUG)
+    logging.getLogger("").addHandler(handler)
+    logging.getLogger("").setLevel(_DEBUG)
 
     image_queue = multiprocessing.Pipe()
-    image_producer = _frame_provider(image_queue, log_queue, logging.getLogger('').getEffectiveLevel())
+    image_producer = _frame_provider(image_queue, log_queue, logging.getLogger("").getEffectiveLevel())
 
     unused, _ = image_queue
     unused.close()
@@ -222,5 +212,5 @@ else:
   import cv2
   _frame_provider = WebcamImageProducer
 
-if __name__ == '__main__':
+if __name__ == "__main__":
   main()
