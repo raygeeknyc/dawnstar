@@ -42,7 +42,9 @@ class Display(object):
     self._info = info
     self._screen = Display._setup_display()
 
-  def refresh(self):
+  def refresh(self, info):
+    # refresh our info object
+    self._info = info
     # Create blank image for drawing.
     # Make sure to create image with mode '1' for 1-bit color.
     width = self._screen.width

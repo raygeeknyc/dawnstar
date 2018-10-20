@@ -1,5 +1,5 @@
-_Pi = True
 _Pi = False
+_Pi = True
 
 import logging
 # Used only if this is run as main
@@ -56,7 +56,7 @@ class ImageProducer(multiprocessing.Process):
         self._current_frame_seq = 0
 
     def stop(self):
-        logging.debug("***analysis received shutdown")
+        logging.debug("image producer received shutdown")
         self._exit.set()
 
     def _init_logging(self):
@@ -83,7 +83,7 @@ class ImageProducer(multiprocessing.Process):
 
     def is_image_difference_over_threshold(self, changed_pixels_threshold):
         changed_pixels = self.calculate_image_difference()
-        return changed_pixels >= changed_pixels_threshold
+        return changed_pixels > changed_pixels_threshold
 
     def _train_motion(self):
         logging.debug("Training motion")
@@ -178,11 +178,11 @@ class PiImageProducer(ImageProducer):
     self._camera.resolution = RESOLUTION
     self._camera.vflip = False
     self._camera.framerate = 32
-    self._raw_capture = PiRGBArray(_camera, size=RESOLUTION)
+    self._raw_capture = PiRGBArray(self._camera, size=RESOLUTION)
 
   def _get_frame(self):
       self._raw_capture.truncate(0)
-      self._camera.capture(_raw_capture, "rgb")
+      self._camera.capture(self._raw_capture, "rgb")
       return self._raw_capture.array
 
   def _close_video(self):
