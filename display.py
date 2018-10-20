@@ -38,8 +38,8 @@ class Display(object):
     logging.debug('/setup_display')
     return disp
 
-  def __init__(self, info):
-    self._info = info
+  def __init__(self):
+    self._info = None
     self._screen = Display._setup_display()
 
   def refresh(self, info):

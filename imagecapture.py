@@ -236,10 +236,10 @@ if _Pi:
   logging.debug("Using PiCamera for video capture")
   from picamera import PiCamera
   from picamera.array import PiRGBArray
-  _frame_provider = PiImageProducer
+  frame_provider = PiImageProducer
 else:
   import cv2
-  _frame_provider = WebcamImageProducer
+  frame_provider = WebcamImageProducer
 
 if __name__ == "__main__":
   main()
