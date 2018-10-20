@@ -33,30 +33,36 @@ signal.signal(signal.SIGINT, signal_handler)
 class Dawnstar(object):
   _IP_CMD = 'hostname -I | cut -d\" \" -f1'
 
-  def __init__(self):
+  def __init__(self, image_queue):
+    self._image_queue = image_queue
     self._ip_address = None
+    self.frames = 0
     self._info = DisplayInfo()
     self._screen = Display()
     print('Ip address: {}'.format(self.get_ip_address()))
+    self._image_consumer = threading.Thread(target = self._consume_images, args=(self._image_queue,))
+    self._image_consumer.start()
 
   def get_ip_address(self):
     self._ip_address = subprocess.check_output(Dawnstar._IP_CMD, shell = True )
     return self._ip_address
 
   def maintain_display(self):
-   self._info.ip = self.get_ip_address()
-   logging.debug('Ip address: {}'.format(self._info.ip))
-   self._screen.refresh(self._info)
+    self._info.ip = self.get_ip_address()
+    self._info.frames = self.frames
+    logging.debug('Ip address: {}'.format(self._info.ip))
+    self._screen.refresh(self._info)
 
-def consume_images(image_queue):
+  def _consume_images(self, image_queue):
     logging.info("image consumer started")
     _, incoming_images = image_queue
     try:
-        while True:
-            frame_seq, image = incoming_images.recv()
-            logging.info("Frame {} received".format(frame_seq))
+      while True:
+        frame_seq, image = incoming_images.recv()
+        self.frames += 1
+        logging.info("Frame {} received".format(frame_seq))
     except EOFError:
-        logging.debug("Done watching")
+      logging.debug("Done watching")
 
 def main():
   global STOP
@@ -70,17 +76,15 @@ def main():
     logging.getLogger("").addHandler(handler)
     logging.getLogger("").setLevel(_DEBUG)
 
-    robot = Dawnstar()
-
     image_queue = multiprocessing.Pipe()
+    robot = Dawnstar(image_queue)
+
     image_producer = imagecapture.frame_provider(image_queue, log_queue, logging.getLogger("").getEffectiveLevel())
     image_producer.start()
 
     unused, _ = image_queue
     unused.close()
 
-    image_consumer = threading.Thread(target = consume_images, args=(image_queue,))
-    image_consumer.start()
     logging.info("waiting for stop signal")
     while not STOP:
         robot.maintain_display()

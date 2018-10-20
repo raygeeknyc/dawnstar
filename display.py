@@ -25,6 +25,7 @@ class DisplayInfo(object):
     self.faces = 0
     self.tracking_bounds = (1024, 1024)
     self.tracking_zone = (0, 0)
+    self.frames = 0
 
 class Display(object):
   @staticmethod
@@ -66,36 +67,36 @@ class Display(object):
     #font = graphics.Font()
     #font.LoadFont('fonts/5x7.bdf')
     line_height = font.getsize(' ')[1]
-    logging.info('Font: {} x {}'.format(font.getsize(' ')[0], font.getsize(' ')[1]))
+    logging.debug('Font: {} x {}'.format(font.getsize(' ')[0], font.getsize(' ')[1]))
 
     draw.rectangle((0,0,width,height), outline=0, fill=0)
 
     draw.text((x, y), 'IP:{}'.format(str(self._info.ip)),  font=font, fill=255)
-    logging.info('IP:{}'.format(str(self._info.ip)))
+    logging.debug('IP:{}'.format(str(self._info.ip)))
 
     faces = 0
 
     y += line_height + 1
-    draw.text((x, y), 'Faces:{}'.format(self._info.faces), font=font, fill=255)
-    logging.info('Faces:{}'.format(self._info.faces))
+    draw.text((x, y), 'Frames:{} Faces:{}'.format(self._info.frames, self._info.faces), font=font, fill=255)
+    logging.debug('Frames: {}, Faces:{}'.format(self._info.frames, self._info.faces))
 
     face_bounds = (0,0)
     face_zone = (0,0)
 
     y += line_height + 1
     draw.text((x, y), 'Tracking:{}'.format(self._info.tracking_bounds), font=font, fill=255)
-    logging.info('Tracking:{}'.format(self._info.tracking_bounds))
+    logging.debug('Tracking:{}'.format(self._info.tracking_bounds))
 
     y += line_height + 1
     draw.text((x, y), '  Zone:{}'.format(self._info.tracking_zone), font=font, fill=255)
-    logging.info('Zone:{}'.format(self._info.tracking_zone))
+    logging.debug('Zone:{}'.format(self._info.tracking_zone))
 
     left_motor_state = 0
     right_motor_state = 0
 
     y += line_height + 1
     draw.text((x, y), 'Left:{} Right:{}'.format(self._info.left_motor, self._info.right_motor), font=font, fill=255)
-    logging.info('Left:{} Right:{}'.format(self._info.left_motor, self._info.right_motor))
+    logging.debug('Left:{} Right:{}'.format(self._info.left_motor, self._info.right_motor))
 
     self._screen.image(image)
     self._screen.display()
