@@ -210,7 +210,7 @@ def main():
     logging.getLogger("").setLevel(_DEBUG)
 
     image_queue = multiprocessing.Pipe()
-    image_producer = _frame_provider(image_queue, log_queue, logging.getLogger("").getEffectiveLevel())
+    image_producer = frame_provider(image_queue, log_queue, logging.getLogger("").getEffectiveLevel())
     image_producer.start()
 
     unused, _ = image_queue
