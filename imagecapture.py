@@ -22,7 +22,7 @@ import threading
 # This is the desired resolution of the camera
 RESOLUTION = (600, 400)
 # This is the desired maximum frame capture rate of the camera
-CAPTURE_RATE_FPS = 0.1 
+CAPTURE_RATE_FPS = 4.0
 # This value was determined from over an observed covered camera's noise
 TRAINING_SAMPLES = 5
 # This is how much the green channel has to change to consider a pixel changed
@@ -137,10 +137,7 @@ class ImageProducer(multiprocessing.Process):
             sys.exit(0)
 
     def _init_camera(self):
-        self._image_buffer = io.BytesIO()
-        self._camera = PiCamera()
-        self._camera.resolution = RESOLUTION
-        self._camera.vflip = True
+        logging.error("overide _init_camera()")
 
     def _attempt_motion_training(self):
         logging.info("Training motion detection")
@@ -191,11 +188,11 @@ class PiImageProducer(ImageProducer):
     self._camera.resolution = RESOLUTION
     self._camera.vflip = False
     self._camera.framerate = 32
-    self._raw_capture = PiRGBArray(self._camera, size=RESOLUTION)
+    self._raw_capture = PiRGBArray(self._camera)
 
   def _get_frame(self):
       self._raw_capture.truncate(0)
-      self._camera.capture(self._raw_capture, "rgb")
+      self._camera.capture(self._raw_capture, "rgb", use_video_port=True)
       return self._raw_capture.array
 
   def _close_video(self):
