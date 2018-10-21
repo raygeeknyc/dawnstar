@@ -83,18 +83,22 @@ class ImageProducer(multiprocessing.Process):
           self._frame_window_start = self._current_frame_seq
           self._frame_latency_window_start = time.time()
 
-    def calculate_image_difference(self):
+    def calculate_image_difference(self, tolerance=None):
         "Detect changes in the green channel."
+        s=time.time()
         changed_pixels = 0
         for x in xrange(RESOLUTION[0]):
             for y in xrange(RESOLUTION[1]):
                 if abs(int(self._current_frame[y,x][1]) - int(self._prev_frame[y,x][1])) > PIXEL_SHIFT_SENSITIVITY:
                     changed_pixels += 1
-        self._prev_frame = self._current_frame
+                    if tolerance and changed_pixels > tolerance:
+                      logging.debug("Image diff short circuited at: {}".format(time.time() - s))
+                      return changed_pixels
+        logging.debug("Image diff took: {}".format(time.time() - s))
         return changed_pixels
 
     def is_image_difference_over_threshold(self, changed_pixels_threshold):
-        changed_pixels = self.calculate_image_difference()
+        changed_pixels = self.calculate_image_difference(changed_pixels_threshold)
         return changed_pixels > changed_pixels_threshold
 
     def _train_motion(self):
