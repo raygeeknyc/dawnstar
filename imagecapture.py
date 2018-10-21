@@ -3,7 +3,7 @@ _Pi = True
 
 import logging
 # Used only if this is run as main
-_DEBUG = logging.DEBUG
+_DEBUG = logging.INFO
 
 # Import the packages we need for drawing and displaying images
 from PIL import Image, ImageDraw
