@@ -20,7 +20,7 @@ import Queue
 import threading
 
 # This is the desired resolution of the camera
-RESOLUTION = (600, 400)
+RESOLUTION = (320, 240)
 # This is the desired maximum frame capture rate of the camera
 CAPTURE_RATE_FPS = 4.0
 # This value was determined from over an observed covered camera's noise
