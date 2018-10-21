@@ -19,16 +19,19 @@ import signal
 import Queue
 import threading
 
-# This is the desired resolution of the Pi camera
+# This is the desired resolution of the camera
 RESOLUTION = (600, 400)
-CAPTURE_RATE_FPS = 2
-# This is over an observed covered camera's noise
+# This is the desired maximum frame capture rate of the camera
+CAPTURE_RATE_FPS = 0.1 
+# This value was determined from over an observed covered camera's noise
 TRAINING_SAMPLES = 5
 # This is how much the green channel has to change to consider a pixel changed
 PIXEL_SHIFT_SENSITIVITY = 30
 
 # This is how long to sleep in various threads between shutdown checks
 POLL_SECS = 0.1
+
+FRAME_LATENCY_WINDOW_SIZE_SECS = 1.0
 
 def signal_handler(sig, frame):
     global STOP
@@ -54,6 +57,8 @@ class ImageProducer(multiprocessing.Process):
         self._last_frame_at = 0.0
         self._frame_delay_secs = 1.0/CAPTURE_RATE_FPS
         self._current_frame_seq = 0
+        self._frame_window_start = 0
+        self._frame_latency_window_start = 0
 
     def stop(self):
         logging.debug("Image producer received shutdown")
@@ -67,9 +72,16 @@ class ImageProducer(multiprocessing.Process):
     def get_next_frame(self):
         delay = (self._last_frame_at + self._frame_delay_secs) - time.time()
         if delay > 0:
+            logging.debug("frame delay: {}".format(delay))
             time.sleep(delay)
         self._current_frame = self._get_frame()
+        self._last_frame_at = time.time()
         self._current_frame_seq += 1
+        if time.time() > (self._frame_latency_window_start + FRAME_LATENCY_WINDOW_SIZE_SECS):
+          window_fps = (self._current_frame_seq - self._frame_window_start)/(time.time() - self._frame_latency_window_start)
+          logging.debug("Frame {}, window {} in {} secs, fp/s: {}, delay: {}".format(self._current_frame_seq, (self._current_frame_seq - self._frame_window_start), (time.time() - self._frame_latency_window_start), window_fps, self._frame_delay_secs))
+          self._frame_window_start = self._current_frame_seq
+          self._frame_latency_window_start = time.time()
 
     def calculate_image_difference(self):
         "Detect changes in the green channel."
