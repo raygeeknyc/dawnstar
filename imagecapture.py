@@ -33,10 +33,10 @@ POLL_SECS = 0.1
 def signal_handler(sig, frame):
     global STOP
     if STOP:
-        logging.debug("SIGTERM")
+        logging.debug("imageproducer SIGTERM")
         signal.signal(signal.SIGINT, signal.SIG_IGN)
         os.kill(os.getpid(), signal.SIGTERM)
-    logging.debug("STOP")
+    logging.debug("imageproducer STOP")
     STOP = True
 signal.signal(signal.SIGINT, signal_handler)
 
@@ -56,7 +56,7 @@ class ImageProducer(multiprocessing.Process):
         self._current_frame_seq = 0
 
     def stop(self):
-        logging.debug("image producer received shutdown")
+        logging.debug("Image producer received shutdown")
         self._exit.set()
 
     def _init_logging(self):
@@ -106,6 +106,7 @@ class ImageProducer(multiprocessing.Process):
 
     def run(self):
         self._init_logging()
+        logging.info("Image producer running")
         self._init_camera()
         self._attempt_motion_training()
         try:
