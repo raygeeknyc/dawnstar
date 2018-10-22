@@ -1,5 +1,5 @@
-_Pi = False
 _Pi = True
+_Pi = False
 
 import logging
 # Used only if this is run as main
@@ -27,6 +27,8 @@ CAPTURE_RATE_FPS = 4.0
 TRAINING_SAMPLES = 5
 # This is how much the green channel has to change to consider a pixel changed
 PIXEL_SHIFT_SENSITIVITY = 30
+# This is the portion of pixels to compare when detecting motion
+MOTION_DETECT_SAMPLE = 1.0/4  # so... 25%? (Kudos to Sarah Cooper)
 
 # This is how long to sleep in various threads between shutdown checks
 POLL_SECS = 0.1
@@ -83,17 +85,19 @@ class ImageProducer(multiprocessing.Process):
           self._frame_window_start = self._current_frame_seq
           self._frame_latency_window_start = time.time()
 
-    def calculate_image_difference(self, tolerance=None):
+    def calculate_image_difference(self, tolerance=None, sample_percentage=MOTION_DETECT_SAMPLE):
         "Detect changes in the green channel."
         s=time.time()
         changed_pixels = 0
-        for x in xrange(RESOLUTION[0]):
-            for y in xrange(RESOLUTION[1]):
-                if abs(int(self._current_frame[y,x][1]) - int(self._prev_frame[y,x][1])) > PIXEL_SHIFT_SENSITIVITY:
-                    changed_pixels += 1
-                    if tolerance and changed_pixels > tolerance:
-                      logging.debug("Image diff short circuited at: {}".format(time.time() - s))
-                      return changed_pixels
+        pixel_step = int((RESOLUTION[0] * RESOLUTION[1])/(MOTION_DETECT_SAMPLE * RESOLUTION[0] * RESOLUTION[1]))
+        current_pixels = self._current_frame.reshape((RESOLUTION[0] * RESOLUTION[1]), 3)
+        prev_pixels = self._prev_frame.reshape((RESOLUTION[0] * RESOLUTION[1]), 3)
+        for pixel_index in xrange(0, RESOLUTION[0]*RESOLUTION[1], pixel_step):
+            if abs(int(current_pixels[pixel_index][1]) - int(prev_pixels[pixel_index][1])) > PIXEL_SHIFT_SENSITIVITY:
+                changed_pixels += 1
+                if tolerance and changed_pixels > tolerance:
+                  logging.debug("Image diff short circuited at: {}".format(time.time() - s))
+                  return changed_pixels
         logging.debug("Image diff took: {}".format(time.time() - s))
         return changed_pixels
 
