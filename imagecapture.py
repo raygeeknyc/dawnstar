@@ -1,5 +1,5 @@
-_Pi = True
 _Pi = False
+_Pi = True
 
 import logging
 # Used only if this is run as main
@@ -28,7 +28,7 @@ TRAINING_SAMPLES = 5
 # This is how much the green channel has to change to consider a pixel changed
 PIXEL_SHIFT_SENSITIVITY = 30
 # This is the portion of pixels to compare when detecting motion
-MOTION_DETECT_SAMPLE = 1.0/4  # so... 25%? (Kudos to Sarah Cooper)
+MOTION_DETECT_SAMPLE = 1.0/10  # so... 10%? (Kudos to Sarah Cooper)
 
 # This is how long to sleep in various threads between shutdown checks
 POLL_SECS = 0.1
