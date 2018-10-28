@@ -1,6 +1,10 @@
 #include <RgbLed.h>
 
 class BiDirectionalMotor {
+  /* ***
+     This class encapsulates a bi-directional variable speed DC motor using a
+     dual H bridge.
+   * ***/
   public:
     BiDirectionalMotor(int speed_pin, int fwd_pin, int bwd_pin, RgbLed_ *indicator_led); 
     void driveFwd(int target_speed);    
