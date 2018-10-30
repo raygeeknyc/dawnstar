@@ -15,7 +15,7 @@ class BiDirectionalMotor {
     int getTargetSpeed();
   protected:
     const int FWD = 1;
-    const int BWD = -11;
+    const int BWD = -1;
     const int STOPPED = 0;
     RgbLed_ *led;
     int target_speed;
@@ -37,7 +37,7 @@ private:
 };
 
 void interruptService() {
-  // figure out uow to associate with the correct motor instance later
+  // figure out how to associate with the correct motor instance later - see C++ language recommendations
 }
 
 BiDirectionalMotorWithEncoders::BiDirectionalMotorWithEncoders(int speed_pin, int fwd_pin, int bwd_pin, int encoder_interrupt_number, int encoder_pin, RgbLed_ *indicator_led)
@@ -90,11 +90,11 @@ RgbLed_ *right_led, *left_led;
 BiDirectionalMotor *right_motor, *left_motor;
 
 void setup() {
-  right_led = new RgbLedCommonAnode(10, 11, 11);
-  left_led = new RgbLedCommonAnode(12, 13, 13);
+  right_led = new RgbLedCommonAnode(2, 3, 3);
+  left_led = new RgbLedCommonAnode(4, 5, 5);
 
-  right_motor = new BiDirectionalMotor(3, 8, 9, right_led);
-  left_motor = new BiDirectionalMotor(5, 6, 7, right_led);
+  right_motor = new BiDirectionalMotor(9, 11, 12, right_led);
+  left_motor = new BiDirectionalMotor(10, 7, 8, right_led);
 
   delay(2000);
 }
