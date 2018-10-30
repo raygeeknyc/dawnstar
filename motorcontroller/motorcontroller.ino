@@ -9,7 +9,7 @@ class BiDirectionalMotor {
     boolean isMovingFwd();
     boolean isMovingBwd();
     int getTargetSpeed();
-  private:
+  protected:
     const int FWD = 1;
     const int BWD = -11;
     const int STOPPED = 0;
@@ -20,6 +20,33 @@ class BiDirectionalMotor {
     int bwd_pin;
     int speed_pin;
 };
+
+class BiDirectionalMotorWithEncoders : public BiDirectionalMotor {
+public:
+    BiDirectionalMotorWithEncoders(int speed_pin, int fwd_pin, int bwd_pin, int encoder_interrupt_number, int encoder_pin, RgbLed_ *indicator_led);
+    int tick_count;
+protected:
+    int encoder_interrupt_number;
+    int encoder_pin;
+private:
+    void incrementEncoderCount();
+};
+
+void interruptService() {
+  // figure out uow to associate with the correct motor instance later
+}
+
+BiDirectionalMotorWithEncoders::BiDirectionalMotorWithEncoders(int speed_pin, int fwd_pin, int bwd_pin, int encoder_interrupt_number, int encoder_pin, RgbLed_ *indicator_led)
+:BiDirectionalMotor(speed_pin, fwd_pin, bwd_pin, indicator_led) {
+  this->encoder_interrupt_number = encoder_interrupt_number;
+  this->encoder_pin = encoder_pin;
+  this->tick_count = 0;
+  attachInterrupt(this->encoder_interrupt_number, interruptService, CHANGE);
+}
+
+void BiDirectionalMotorWithEncoders::incrementEncoderCount() {
+  this->tick_count+=1;
+}
 
 void BiDirectionalMotor::driveFwd(int target_speed) {
   this->led->setColor(Color::GREEN);
