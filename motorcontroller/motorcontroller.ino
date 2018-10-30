@@ -1,6 +1,10 @@
 #include <RgbLed.h>
 
 class BiDirectionalMotor {
+  /* ***
+     This class encapsulates a bi-directional variable speed DC motor using a
+     dual H bridge.
+   * ***/
   public:
     BiDirectionalMotor(int speed_pin, int fwd_pin, int bwd_pin, RgbLed_ *indicator_led); 
     void driveFwd(int target_speed);    
@@ -91,8 +95,21 @@ void setup() {
 
   right_motor = new BiDirectionalMotor(3, 8, 9, right_led);
   left_motor = new BiDirectionalMotor(5, 6, 7, right_led);
+
+  delay(2000);
 }
 
 void loop() {
+  left_motor->driveFwd(5);
+  right_motor->driveFwd(5);
+  delay(2000);  
 
+  right_motor->driveBwd(10);
+  delay(2000);  
+
+  left_motor->driveBwd(5);
+  delay(2000);  
+
+  right_motor->driveFwd(10);
+  delay(2000);  
 }
