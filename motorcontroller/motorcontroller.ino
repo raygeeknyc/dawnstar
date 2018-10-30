@@ -27,25 +27,20 @@ class BiDirectionalMotor {
 
 class BiDirectionalMotorWithEncoders : public BiDirectionalMotor {
 public:
-    BiDirectionalMotorWithEncoders(int speed_pin, int fwd_pin, int bwd_pin, int encoder_interrupt_number, int encoder_pin, RgbLed_ *indicator_led);
+    BiDirectionalMotorWithEncoders(int speed_pin, int fwd_pin, int bwd_pin, int encoder_interrupt_number, int encoder_pin, RgbLed_ *indicator_led, void (*interrupt_service_routine)(void));
     int tick_count;
+    void incrementEncoderCount();
 protected:
     int encoder_interrupt_number;
     int encoder_pin;
-private:
-    void incrementEncoderCount();
 };
 
-void interruptService() {
-  // figure out how to associate with the correct motor instance later - see C++ language recommendations
-}
-
-BiDirectionalMotorWithEncoders::BiDirectionalMotorWithEncoders(int speed_pin, int fwd_pin, int bwd_pin, int encoder_interrupt_number, int encoder_pin, RgbLed_ *indicator_led)
+BiDirectionalMotorWithEncoders::BiDirectionalMotorWithEncoders(int speed_pin, int fwd_pin, int bwd_pin, int encoder_interrupt_number, int encoder_pin, RgbLed_ *indicator_led, void(*interrupt_service_routine)(void))
 :BiDirectionalMotor(speed_pin, fwd_pin, bwd_pin, indicator_led) {
   this->encoder_interrupt_number = encoder_interrupt_number;
   this->encoder_pin = encoder_pin;
   this->tick_count = 0;
-  attachInterrupt(this->encoder_interrupt_number, interruptService, CHANGE);
+  attachInterrupt(this->encoder_interrupt_number, interrupt_service_routine, CHANGE);
 }
 
 void BiDirectionalMotorWithEncoders::incrementEncoderCount() {
@@ -88,6 +83,20 @@ void BiDirectionalMotor::stop() {
 
 RgbLed_ *right_led, *left_led;
 BiDirectionalMotor *right_motor, *left_motor;
+
+BiDirectionalMotorWithEncoders *right_encoded_motor, *left_encoded_motor;
+
+void LeftMotorInterruptService() {
+  if (left_encoded_motor) {
+    left_encoded_motor->incrementEncoderCount();
+  }
+}
+
+void RightMotorInterruptService() {
+  if (right_encoded_motor) {
+    right_encoded_motor->incrementEncoderCount();
+  }
+}
 
 void setup() {
   right_led = new RgbLedCommonAnode(2, 3, 3);
