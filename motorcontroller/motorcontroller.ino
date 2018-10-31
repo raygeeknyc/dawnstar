@@ -9,7 +9,7 @@ class BiDirectionalMotor {
     BiDirectionalMotor(int speed_pin, int fwd_pin, int bwd_pin, RgbLed_ *indicator_led); 
     void driveFwd(int target_speed);    
     void driveBwd(int target_speed);    
-    void stop();
+    void fullStop();
     boolean isMovingFwd();
     boolean isMovingBwd();
     int getTargetSpeed();
@@ -48,7 +48,8 @@ void BiDirectionalMotorWithEncoders::incrementEncoderCount() {
 }
 
 void BiDirectionalMotor::driveFwd(int target_speed) {
-  this->led->setColor(Color::GREEN);
+  this->led->setColor(Color::BLUE);
+  this->direction_ = this->FWD;
   this->target_speed = target_speed;
   digitalWrite(this->fwd_pin, HIGH);
   digitalWrite(this->bwd_pin, LOW);
@@ -57,6 +58,7 @@ void BiDirectionalMotor::driveFwd(int target_speed) {
 
 void BiDirectionalMotor::driveBwd(int target_speed) {
   this->led->setColor(Color::RED);
+  this->direction_ = this->BWD;
   this->target_speed = target_speed;
   digitalWrite(this->fwd_pin, LOW);
   digitalWrite(this->bwd_pin, HIGH);
@@ -65,14 +67,13 @@ void BiDirectionalMotor::driveBwd(int target_speed) {
 
 BiDirectionalMotor::BiDirectionalMotor(int speed_pin, int fwd_pin, int bwd_pin, RgbLed_ *indicator_led) {
   this->led = indicator_led;
-  this->direction_ = this->STOPPED;
-  this->target_speed = 0;
   this->speed_pin = speed_pin;
   this->fwd_pin = fwd_pin;
   this->bwd_pin = bwd_pin;
+  this->fullStop();
 }
 
-void BiDirectionalMotor::stop() {
+void BiDirectionalMotor::fullStop() {
   this->direction_ = this->STOPPED;
   this->target_speed = 0;
   this->led->setColor(Color::NONE);
@@ -99,13 +100,16 @@ void RightMotorInterruptService() {
 }
 
 void setup() {
+  Serial.begin(9600);
+  Serial.println("setup");
   right_led = new RgbLedCommonAnode(2, 3, 3);
   left_led = new RgbLedCommonAnode(4, 5, 5);
 
   right_motor = new BiDirectionalMotor(9, 11, 12, right_led);
-  left_motor = new BiDirectionalMotor(10, 7, 8, right_led);
-
-  delay(2000);
+  left_motor = new BiDirectionalMotor(10, 7, 8, left_led);
+  Serial.println("/setup");
+  Serial.send_now();
+  delay(1000);
 }
 
 void loop() {
@@ -121,4 +125,12 @@ void loop() {
 
   right_motor->driveFwd(10);
   delay(2000);  
+
+  left_motor->driveFwd(10);
+  delay(2000);  
+
+  right_motor->fullStop();
+  left_motor->fullStop();
+  delay(2000);  
+
 }
