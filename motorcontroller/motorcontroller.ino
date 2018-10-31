@@ -51,6 +51,9 @@ void BiDirectionalMotor::driveFwd(int target_speed) {
   this->led->setColor(Color::BLUE);
   this->direction_ = this->FWD;
   this->target_speed = target_speed;
+  pinMode(this->fwd_pin, OUTPUT);
+  pinMode(this->bwd_pin, OUTPUT);
+  pinMode(this->speed_pin, OUTPUT);
   digitalWrite(this->fwd_pin, HIGH);
   digitalWrite(this->bwd_pin, LOW);
   analogWrite(this->speed_pin, target_speed);
@@ -113,20 +116,20 @@ void setup() {
 }
 
 void loop() {
-  left_motor->driveFwd(5);
-  right_motor->driveFwd(5);
+  left_motor->driveFwd(127);
+  right_motor->driveFwd(127);
   delay(2000);  
 
-  right_motor->driveBwd(10);
+  right_motor->driveBwd(255);
   delay(2000);  
 
-  left_motor->driveBwd(5);
+  left_motor->driveBwd(127);
   delay(2000);  
 
-  right_motor->driveFwd(10);
+  right_motor->driveFwd(255);
   delay(2000);  
 
-  left_motor->driveFwd(10);
+  left_motor->driveFwd(255);
   delay(2000);  
 
   right_motor->fullStop();
