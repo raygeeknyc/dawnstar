@@ -33,16 +33,20 @@ def signal_handler(sig, frame):
 signal.signal(signal.SIGINT, signal_handler)
 
 class Dawnstar():
-  def __init__(self):
+  def __init__(self, object_queue):
     global STOP
 
     self.ip_address = None
     self.frames = 0
     self._screen = Display()
+    self._object_queue = object_queue
     print('Ip address: {}'.format(self._get_ip_address()))
 
   def startup(self):
     global STOP
+
+    self._object_consumer = threading.Thread(target = self._process_objects, args=())
+    self._object_consumer.start()
 
     self._screen_updater = threading.Thread(target = self._maintain_display, args=())
     self._screen_updater.start()
@@ -76,15 +80,14 @@ class Dawnstar():
         prev_ip_address = self.ip_address
         self._screen.refresh(info)
 
-  def _consume_images(self, image_queue):
+  def _process_objects(self):
     global STOP
-    logging.debug("image consumer started")
-    incoming_images = image_queue
+    logging.debug("object consumer started")
     while not STOP:
-      frame_seq, image = incoming_images.get()
+      frame_seq, image = object_queue.get()
       self.frames += 1
-      logging.info("Frame {} received".format(frame_seq))
-    logging.debug("Done watching")
+      logging.info("Objects[{}] received".format(self.frames))
+    logging.debug("Done consuming objects")
 
 def main():
   global STOP
@@ -99,13 +102,15 @@ def main():
     logging.getLogger("").setLevel(_DEBUG)
 
     image_queue = multiprocessing.Queue()
-    robot = Dawnstar()
+
+    object_queue = multiprocessing.Queue()
+    robot = Dawnstar(object_queue)
 
     image_analyzer = imageanalyzer.ImageAnalyzer(image_queue, log_queue, logging.getLogger("").getEffectiveLevel())
     logging.debug("Starting image analyzer")
     image_analyzer.start()
 
-    image_producer = imagecapture.frame_provider(image_queue, log_queue, logging.getLogger("").getEffectiveLevel())
+    image_producer = imagecapture.frame_provider(image_queue, object_queue, log_queue, logging.getLogger("").getEffectiveLevel())
     logging.debug("Starting image producer")
     image_producer.start()
 

@@ -33,38 +33,42 @@ def signal_handler(sig, frame):
 signal.signal(signal.SIGINT, signal_handler)
 
 class ImageAnalyzer(multiprocessing.Process):
-    def __init__(self, image_queue, log_queue, logging_level):
+    def __init__(self, image_queue, object_queue, log_queue, logging_level):
         multiprocessing.Process.__init__(self)
         self._log_queue = log_queue
         self._logging_level = logging_level
         self._exit = multiprocessing.Event()
         self._image_queue = image_queue
+        self._object__queue = object_queue
+        self._image_queue = image_queue
         self._stop_processing = False
 
-    def _process_image(self, image):
-        logging.info("Processing image")
+    def _process_image(self, image, frame_number):
+        logging.info("Processing image {}".format(frame_number))
+        self._object_queue.put(image)
 
     def _get_images(self):
         logging.debug("image consumer started")
-        image_number = 0
         image = None
         while not self._stop_processing:
             try:
                 t = self._image_queue.get(False)
                 logging.debug("processing queue had an entry")
-                image_number, image = t
-                logging.debug("Image {} received".format(image_number))
+                frame_number, image = t
+                logging.debug("Image {} received".format(frame_number))
             except Queue.Empty:
                 if image is None:
                     logging.debug("Empty processing queue, waiting")
                     continue
-                logging.debug("Processing image {}".format(image_number))
-                self._process_image(image)
+                self._process_image(image, frame_number)
                 image = None
             except Exception, e:
                 logging.exception("error consuming images")
         logging.debug("Stopped image consumer")
  
+    def _cleanup(self):
+        self._object_queue.close()
+
     def stop(self):
         logging.debug("Image analyzer received shutdown")
         self._exit.set()
@@ -90,5 +94,6 @@ class ImageAnalyzer(multiprocessing.Process):
         except Exception, e:
             logging.exception("Error in analyzer main thread")
         finally:
+            self._cleanup()
             logging.debug("Exiting analyzer")
             sys.exit(0)
