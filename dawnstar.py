@@ -31,11 +31,10 @@ def signal_handler(sig, frame):
     STOP = True
 signal.signal(signal.SIGINT, signal_handler)
 
-class Dawnstar(object):
+class Dawnstar():
   def __init__(self, image_queue):
     global STOP
 
-    self._image_queue = image_queue
     self.ip_address = None
     self.frames = 0
     self._screen = Display()
@@ -43,9 +42,6 @@ class Dawnstar(object):
 
   def startup(self):
     global STOP
-
-    self._image_consumer = threading.Thread(target = self._consume_images, args=(self._image_queue,))
-    self._image_consumer.start()
 
     self._screen_updater = threading.Thread(target = self._maintain_display, args=())
     self._screen_updater.start()
@@ -105,7 +101,11 @@ def main():
     logging.getLogger("").setLevel(_DEBUG)
 
     image_queue = multiprocessing.Pipe()
-    robot = Dawnstar(image_queue)
+    robot = Dawnstar()
+
+    image_analyzer = imageanalyer.ImageAnalyzer(image_queue, log_queue, logging.getLogger("").getEffectiveLevel())
+    logging.debug("Starting image analyzer")
+    image_analyzer.start()
 
     image_producer = imagecapture.frame_provider(image_queue, log_queue, logging.getLogger("").getEffectiveLevel())
     logging.debug("Starting image producer")
