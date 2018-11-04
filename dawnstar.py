@@ -20,6 +20,7 @@ IP_ADDRESS_RESOLUTION_DELAY_SECS = 1
 
 from display import DisplayInfo, Display
 import imagecapture
+import imageanalyzer
 
 def signal_handler(sig, frame):
     global STOP
@@ -32,7 +33,7 @@ def signal_handler(sig, frame):
 signal.signal(signal.SIGINT, signal_handler)
 
 class Dawnstar():
-  def __init__(self, image_queue):
+  def __init__(self):
     global STOP
 
     self.ip_address = None
@@ -103,7 +104,7 @@ def main():
     image_queue = multiprocessing.Pipe()
     robot = Dawnstar()
 
-    image_analyzer = imageanalyer.ImageAnalyzer(image_queue, log_queue, logging.getLogger("").getEffectiveLevel())
+    image_analyzer = imageanalyzer.ImageAnalyzer(image_queue, log_queue, logging.getLogger("").getEffectiveLevel())
     logging.debug("Starting image analyzer")
     image_analyzer.start()
 
@@ -125,11 +126,16 @@ def main():
     logging.exception("Error raised in main()")
   finally:
     logging.info("Ending")
+    if image_analyzer:
+      image_analyzer.stop()
+      logging.debug("Waiting for analyzer process")
+      image_analyzer.join()
+      logging.debug("analyzer process returned")
     if image_producer:
       image_producer.stop()
-      logging.debug("Waiting for background process")
+      logging.debug("Waiting for image producer process")
       image_producer.join()
-      logging.debug("background process returned, exiting main process")
+      logging.debug("image producer process returned")
   sys.exit(0)
 
 if __name__ == "__main__":

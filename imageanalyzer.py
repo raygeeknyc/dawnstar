@@ -40,12 +40,7 @@ class ImageAnalyzer(multiprocessing.Process):
         self._exit = multiprocessing.Event()
         self._image_queue, _ = image_queue
         self._stop_analyzing = False
-        self._last_frame_at = 0.0
-        self._frame_delay_secs = 1.0/CAPTURE_RATE_FPS
-        self._current_frame_seq = 0
-        self._frame_window_start = 0
-        self._frame_latency_window_start = 0
-        self._processing_queue = Queue.queue()
+        self._processing_queue = Queue.Queue()
 
     def stop(self):
         logging.debug("Image analyzer received shutdown")
