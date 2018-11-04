@@ -39,7 +39,7 @@ class ImageAnalyzer(multiprocessing.Process):
         self._logging_level = logging_level
         self._exit = multiprocessing.Event()
         self._image_queue = image_queue
-        self._object__queue = object_queue
+        self._object_queue = object_queue
         self._image_queue = image_queue
         self._stop_processing = False
 

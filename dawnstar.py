@@ -13,6 +13,7 @@ import time
 import threading
 
 import multiprocessing
+from Queue import Empty
 from multiprocessingloghandler import ParentMultiProcessingLogHandler
 
 REFRESH_DELAY_SECS = 2
@@ -84,7 +85,10 @@ class Dawnstar():
     global STOP
     logging.debug("object consumer started")
     while not STOP:
-      frame_seq, image = object_queue.get()
+      try:
+        objects = self._object_queue.get(False)
+      except Empty:
+        continue 
       self.frames += 1
       logging.info("Objects[{}] received".format(self.frames))
     logging.debug("Done consuming objects")
@@ -106,11 +110,11 @@ def main():
     object_queue = multiprocessing.Queue()
     robot = Dawnstar(object_queue)
 
-    image_analyzer = imageanalyzer.ImageAnalyzer(image_queue, log_queue, logging.getLogger("").getEffectiveLevel())
+    image_analyzer = imageanalyzer.ImageAnalyzer(image_queue, object_queue, log_queue, logging.getLogger("").getEffectiveLevel())
     logging.debug("Starting image analyzer")
     image_analyzer.start()
 
-    image_producer = imagecapture.frame_provider(image_queue, object_queue, log_queue, logging.getLogger("").getEffectiveLevel())
+    image_producer = imagecapture.frame_provider(image_queue, log_queue, logging.getLogger("").getEffectiveLevel())
     logging.debug("Starting image producer")
     image_producer.start()
 
