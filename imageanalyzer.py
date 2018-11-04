@@ -62,7 +62,7 @@ class ImageAnalyzer(multiprocessing.Process):
                 image = None
             except Exception, e:
                 logging.exception("error processing")
-        logging.debug("done processing")
+        logging.info("Stopped image processor")
  
     def stop(self):
         logging.debug("Image analyzer received shutdown")
@@ -115,3 +115,4 @@ class ImageAnalyzer(multiprocessing.Process):
                 self._processing_queue.put((image, image_number))
         except EOFError:
             logging.debug("Done receiving images")
+        logging.info("Stopped image consumer")
