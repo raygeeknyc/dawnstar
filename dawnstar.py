@@ -1,8 +1,8 @@
 # The tracker portion of a K9
 
 import logging
-_DEBUG=logging.INFO
 _DEBUG=logging.DEBUG
+_DEBUG=logging.INFO
 
 import os
 import socket
