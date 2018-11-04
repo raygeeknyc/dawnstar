@@ -48,14 +48,13 @@ signal.signal(signal.SIGINT, signal_handler)
 EMPTY_LABELS = []
 
 class ImageProducer(multiprocessing.Process):
-    def __init__(self, vision_queue, log_queue, logging_level):
+    def __init__(self, key_frame_queue, log_queue, logging_level):
         multiprocessing.Process.__init__(self)
         self._log_queue = log_queue
         self._logging_level = logging_level
         self._exit = multiprocessing.Event()
-        self._vision_queue, _ = vision_queue
+        self._key_frame_queue, _ = key_frame_queue
         self._stop_capturing = False
-        self._stop_analyzing = False
         self._last_frame_at = 0.0
         self._frame_delay_secs = 1.0/CAPTURE_RATE_FPS
         self._current_frame_seq = 0
@@ -161,7 +160,7 @@ class ImageProducer(multiprocessing.Process):
                 self.get_next_frame()
                 if self.is_image_difference_over_threshold(self._motion_threshold):
                     logging.debug("Motion detected")
-                    self._vision_queue.send((self._current_frame_seq, self._current_frame))
+                    self._key_frame_queue.send((self._current_frame_seq, self._current_frame))
         except Exception, e:
             logging.exception("Error in capture_frames")
         logging.debug("Exiting vision capture thread")
@@ -169,7 +168,7 @@ class ImageProducer(multiprocessing.Process):
 
     def _cleanup(self):
         logging.debug("closing image queue")
-        self._vision_queue.close()
+        self._key_frame_queue.close()
 
 class WebcamImageProducer(ImageProducer):
   def _init_camera(self):
