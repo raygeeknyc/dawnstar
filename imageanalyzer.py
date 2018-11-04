@@ -33,19 +33,41 @@ def signal_handler(sig, frame):
 signal.signal(signal.SIGINT, signal_handler)
 
 class ImageAnalyzer(multiprocessing.Process):
-    def __init__(self, image_queue, log_queue, logging_level):
+    def __init__(self, image_queue, object_queue, log_queue, logging_level):
         multiprocessing.Process.__init__(self)
         self._log_queue = log_queue
         self._logging_level = logging_level
         self._exit = multiprocessing.Event()
-        self._image_queue, _ = image_queue
-        self._stop_analyzing = False
-        self._last_frame_at = 0.0
-        self._frame_delay_secs = 1.0/CAPTURE_RATE_FPS
-        self._current_frame_seq = 0
-        self._frame_window_start = 0
-        self._frame_latency_window_start = 0
-        self._processing_queue = Queue.queue()
+        self._image_queue = image_queue
+        self._object_queue = object_queue
+        self._image_queue = image_queue
+        self._stop_processing = False
+
+    def _process_image(self, image, frame_number):
+        logging.info("Processing image {}".format(frame_number))
+        self._object_queue.put(image)
+
+    def _get_images(self):
+        logging.debug("image consumer started")
+        image = None
+        while not self._stop_processing:
+            try:
+                t = self._image_queue.get(False)
+                logging.debug("processing queue had an entry")
+                frame_number, image = t
+                logging.debug("Image {} received".format(frame_number))
+            except Queue.Empty:
+                if image is None:
+                    logging.debug("Empty processing queue, waiting")
+                    continue
+                self._process_image(image, frame_number)
+                image = None
+            except Exception, e:
+                logging.exception("error consuming images")
+        logging.debug("Stopped image consumer")
+ 
+    def _cleanup(self):
+        self._object_queue.close()
 
     def stop(self):
         logging.debug("Image analyzer received shutdown")
@@ -58,36 +80,20 @@ class ImageAnalyzer(multiprocessing.Process):
 
     def run(self):
         self._init_logging()
-        logging.info("Image analyzer running")
+        logging.debug("Image analyzer running")
         try:
-            self._stop_analyzing = False
+            self._stop_processing = False
             self._receiver = threading.Thread(target=self._get_images)
             self._receiver.start()
+
             while not self._exit.is_set():
                 time.sleep(POLL_SECS)
-            logging.debug("Shutting down threads")
-            self._stop_receiving = True
+            logging.debug("Shutting down image receiver")
+            self._stop_processing = True
             self._receiver.join()
         except Exception, e:
             logging.exception("Error in analyzer main thread")
         finally:
+            self._cleanup()
             logging.debug("Exiting analyzer")
             sys.exit(0)
-
-    def _cleanup(self):
-        logging.debug("closing image queue")
-        self._image_queue.close()
-
-    def _get_images(self):
-        "Put each incoming image on a queue, allow image processing to be asynchronous from receipt."
-        logging.info("image consumer started")
-        _, incoming_images = self._image_queue
-        image_number = 0
-        try:
-            while True:
-                image = incoming_images.recv()
-                image_number += 1
-                logging.info("Frame {} received".format(image_number))
-                self._processing_queue.put((image, image_number))
-        except EOFError:
-            logging.debug("Done receiving images")

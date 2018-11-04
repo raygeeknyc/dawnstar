@@ -1,5 +1,5 @@
-_Pi = True
 _Pi = False
+_Pi = True
 
 import logging
 # Used only if this is run as main
@@ -53,7 +53,7 @@ class ImageProducer(multiprocessing.Process):
         self._log_queue = log_queue
         self._logging_level = logging_level
         self._exit = multiprocessing.Event()
-        self._key_frame_queue, _ = key_frame_queue
+        self._key_frame_queue = key_frame_queue
         self._stop_capturing = False
         self._last_frame_at = 0.0
         self._frame_delay_secs = 1.0/CAPTURE_RATE_FPS
@@ -125,7 +125,7 @@ class ImageProducer(multiprocessing.Process):
 
     def run(self):
         self._init_logging()
-        logging.info("Image producer running")
+        logging.debug("Image producer running")
         self._init_camera()
         self._attempt_motion_training()
         try:
@@ -134,25 +134,27 @@ class ImageProducer(multiprocessing.Process):
             self._capturer.start()
             while not self._exit.is_set():
                 time.sleep(POLL_SECS)
-            logging.debug("Shutting down threads")
+            logging.debug("Shutting down image capture thread")
             self._stop_capturing = True
             self._capturer.join()
         except Exception, e:
             logging.exception("Error in vision main thread")
         finally:
-            logging.debug("Exiting vision")
+            logging.debug("Exiting image capture")
             sys.exit(0)
 
     def _init_camera(self):
         logging.error("overide _init_camera()")
 
     def _attempt_motion_training(self):
-        logging.info("Training motion detection")
+        logging.debug("Training motion detection")
         for retry in xrange(3):
             if self._train_motion():
                 break
         logging.info("Trained motion detection {}".format(self._motion_threshold))
+
     def _capture_frames(self):
+        logging.debug("capturing frames")
         try:
             self.get_next_frame()
             while not self._stop_capturing:
@@ -160,14 +162,14 @@ class ImageProducer(multiprocessing.Process):
                 self.get_next_frame()
                 if self.is_image_difference_over_threshold(self._motion_threshold):
                     logging.debug("Motion detected")
-                    self._key_frame_queue.send((self._current_frame_seq, self._current_frame))
+                    self._key_frame_queue.put((self._current_frame_seq, self._current_frame))
         except Exception, e:
             logging.exception("Error in capture_frames")
         logging.debug("Exiting vision capture thread")
         self._cleanup()
 
     def _cleanup(self):
-        logging.debug("closing image queue")
+        logging.debug("closing key frame queue")
         self._key_frame_queue.close()
 
 class WebcamImageProducer(ImageProducer):
@@ -206,12 +208,12 @@ class PiImageProducer(ImageProducer):
       self._camera.close()
 
 def consume_images(image_queue):
-    logging.info("image consumer started")
+    logging.debug("image consumer started")
     _, incoming_images = image_queue
     try:
         while True:
             frame_seq, image = incoming_images.recv()
-            logging.info("Frame {} received".format(frame_seq))
+            logging.debug("Frame {} received".format(frame_seq))
     except EOFError:
         logging.debug("Done watching")
 
@@ -235,10 +237,10 @@ def main():
 
     image_consumer = threading.Thread(target = consume_images, args=(image_queue,))
     image_consumer.start()
-    logging.info("waiting for stop signal")
+    logging.debug("waiting for stop signal")
     while not STOP:
         time.sleep(POLL_SECS)
-    logging.info("STOP seen in main")
+    logging.debug("STOP seen in main")
  
   except Exception, e:
     logging.exception("Error raised in main()")

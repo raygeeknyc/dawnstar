@@ -1,8 +1,8 @@
 # The tracker portion of a K9
 
 import logging
-_DEBUG=logging.INFO
 _DEBUG=logging.DEBUG
+_DEBUG=logging.INFO
 
 import os
 import socket
@@ -13,6 +13,7 @@ import time
 import threading
 
 import multiprocessing
+from Queue import Empty
 from multiprocessingloghandler import ParentMultiProcessingLogHandler
 
 REFRESH_DELAY_SECS = 2
@@ -20,6 +21,7 @@ IP_ADDRESS_RESOLUTION_DELAY_SECS = 1
 
 from display import DisplayInfo, Display
 import imagecapture
+import imageanalyzer
 
 def signal_handler(sig, frame):
     global STOP
@@ -32,16 +34,20 @@ def signal_handler(sig, frame):
 signal.signal(signal.SIGINT, signal_handler)
 
 class Dawnstar():
-  def __init__(self, image_queue):
+  def __init__(self, object_queue):
     global STOP
 
     self.ip_address = None
     self.frames = 0
     self._screen = Display()
+    self._object_queue = object_queue
     print('Ip address: {}'.format(self._get_ip_address()))
 
   def startup(self):
     global STOP
+
+    self._object_consumer = threading.Thread(target = self._process_objects, args=())
+    self._object_consumer.start()
 
     self._screen_updater = threading.Thread(target = self._maintain_display, args=())
     self._screen_updater.start()
@@ -75,18 +81,17 @@ class Dawnstar():
         prev_ip_address = self.ip_address
         self._screen.refresh(info)
 
-  def _consume_images(self, image_queue):
+  def _process_objects(self):
     global STOP
-    logging.info("image consumer started")
-    _, incoming_images = image_queue
-    try:
-      while not STOP:
-        frame_seq, image = incoming_images.recv()
-        self.frames += 1
-        logging.info("Frame {} received".format(frame_seq))
-    except EOFError:
-      logging.debug("End of image queue")
-    logging.debug("Done watching")
+    logging.debug("object consumer started")
+    while not STOP:
+      try:
+        objects = self._object_queue.get(False)
+      except Empty:
+        continue 
+      self.frames += 1
+      logging.info("Objects[{}] received".format(self.frames))
+    logging.debug("Done consuming objects")
 
 def main():
   global STOP
@@ -100,10 +105,12 @@ def main():
     logging.getLogger("").addHandler(handler)
     logging.getLogger("").setLevel(_DEBUG)
 
-    image_queue = multiprocessing.Pipe()
-    robot = Dawnstar()
+    image_queue = multiprocessing.Queue()
 
-    image_analyzer = imageanalyer.ImageAnalyzer(image_queue, log_queue, logging.getLogger("").getEffectiveLevel())
+    object_queue = multiprocessing.Queue()
+    robot = Dawnstar(object_queue)
+
+    image_analyzer = imageanalyzer.ImageAnalyzer(image_queue, object_queue, log_queue, logging.getLogger("").getEffectiveLevel())
     logging.debug("Starting image analyzer")
     image_analyzer.start()
 
@@ -111,11 +118,9 @@ def main():
     logging.debug("Starting image producer")
     image_producer.start()
 
-    unused, _ = image_queue
-    unused.close()
-
     logging.info("Starting Robot")
     robot.startup()
+
     logging.info("Robot running")
     while not STOP:
         time.sleep(REFRESH_DELAY_SECS)
@@ -127,9 +132,14 @@ def main():
     logging.info("Ending")
     if image_producer:
       image_producer.stop()
-      logging.debug("Waiting for background process")
+      logging.debug("Waiting for image producer process")
       image_producer.join()
-      logging.debug("background process returned, exiting main process")
+      logging.debug("image producer process returned")
+    if image_analyzer:
+      image_analyzer.stop()
+      logging.debug("Waiting for analyzer process")
+      image_analyzer.join()
+      logging.debug("analyzer process returned")
   sys.exit(0)
 
 if __name__ == "__main__":
