@@ -10,9 +10,11 @@ import argparse
 import numpy as np
 import time
 import cv2
+from ncs_object_detector import NCSObjectClassifier
 
 # frame dimensions should be square
 DISPLAY_DIMS = (900, 900)
+PREPROCESS_DIMS = (300, 300)
 
 # calculate the multiplier needed to scale the bounding boxes
 DISP_MULTIPLIER = DISPLAY_DIMS[0] // PREPROCESS_DIMS[0]
@@ -27,22 +29,6 @@ ap.add_argument("-d", "--display", type=int, default=0,
 	help="switch to display image on screen")
 args = vars(ap.parse_args())
 
-# grab a list of all NCS devices plugged in to USB
-print("[INFO] finding NCS devices...")
-devices = mvnc.EnumerateDevices()
-
-# if no devices found, exit the script
-if len(devices) == 0:
-	print("[INFO] No devices found. Please plug in a NCS")
-	quit()
-
-# use the first device since this is a simple test script
-# (you'll want to modify this is using multiple NCS devices)
-print("[INFO] found {} devices. device0 will be used. "
-	"opening device0...".format(len(devices)))
-device = mvnc.Device(devices[0])
-device.OpenDevice()
-
 # open a pointer to the video stream thread and allow the buffer to
 # start to fill, then start the FPS counter
 print("[INFO] starting the video stream and FPS counter...")
@@ -51,7 +37,7 @@ time.sleep(1)
 fps = FPS().start()
 
 # loop over frames from the video file stream
-classifier = NCSObjectClassifier(args["confidence"])
+classifier = NCSObjectClassifier(args["graph"], args["confidence"])
 while True:
 	try:
 		# grab the frame from the threaded video stream
@@ -127,7 +113,7 @@ if args["display"] > 0:
 # stop the video stream
 vs.stop()
 
-NCSObjectClassifier.cleanup()
+classifier.cleanup()
 
 # display FPS information
 print("[INFO] elapsed time: {:.2f}".format(fps.elapsed()))

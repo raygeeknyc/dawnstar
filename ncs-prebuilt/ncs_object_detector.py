@@ -6,27 +6,28 @@ import numpy as np
 import time
 import cv2
 
-
-# calculate the multiplier needed to scale the bounding boxes
-DISP_MULTIPLIER = DISPLAY_DIMS[0] // PREPROCESS_DIMS[0]
-
 class NCSObjectClassifier(object):
 	# frame dimensions should be sqaure
 	PREPROCESS_DIMS = (300, 300)
-	@classmethod
-	def init_NCS_device(cls):
+
+        device = None
+
+        @classmethod
+	def _init_NCS_device(cls):
 		# grab a list of all NCS devices plugged in to USB
-		print("[INFO] finding NCS devices...")
+		print("finding NCS devices...")
 		devices = mvnc.EnumerateDevices()
 
 		# if no devices found, exit the script
 		if len(devices) == 0:
 			raise Exception("No devices found. Please plug in a NCS")
 
-		print("[INFO] found {} devices. device0 will be used. "
+		print("found {} devices. device0 will be used. "
 			"opening device0...".format(len(devices)))
-		cls.device = mvnc.Device(devices[0])
-		cls.device.OpenDevice()
+		device = mvnc.Device(devices[0])
+		device.OpenDevice()
+		print("device opened")
+		cls.device = device
 
 	# initialize the list of class labels our network was trained to
 	# detect, then generate a set of bounding box colors for each class
@@ -35,18 +36,19 @@ class NCSObjectClassifier(object):
 		"diningtable", "dog", "horse", "motorbike", "person",
 		"pottedplant", "sheep", "sofa", "train", "tvmonitor")
 
-	NCSObjectClassifier.init_NCS_device()
         
 	def __init__(self, graph_filename, min_confidence):
 		self.graph_filename = graph_filename
 		self.confidence_threshold = min_confidence
+                if not self.__class__.device:
+			self.__class__._init_NCS_device()
 		self._init_graph()
 
-	@classmethod
-	def cleanup(cls):
+	def cleanup(self):
 		# clean up the graph and device
-		cls.graph.DeallocateGraph()
-		cls.device.CloseDevice()
+		self._graph.DeallocateGraph()
+		self.__class__.device.CloseDevice()
+		self.__class__.device = None
 
 	def _init_graph(self):
 		# open the CNN graph file
@@ -120,95 +122,3 @@ def predict(image, graph):
 
 	# return the list of predictions to the calling function
 	return predictions
-
-
-# open a pointer to the video stream thread and allow the buffer to
-# start to fill, then start the FPS counter
-print("[INFO] starting the video stream and FPS counter...")
-vs = VideoStream(usePiCamera=True).start()
-time.sleep(1)
-fps = FPS().start()
-
-# loop over frames from the video file stream
-while True:
-	try:
-		# grab the frame from the threaded video stream
-		# make a copy of the frame and resize it for display/video purposes
-		frame = vs.read()
-		image_for_result = frame.copy()
-		image_for_result = cv2.resize(image_for_result, DISPLAY_DIMS)
-
-		# use the NCS to acquire predictions
-		predictions = predict(frame, graph)
-
-		# loop over our predictions
-		for (i, pred) in enumerate(predictions):
-			# extract prediction data for readability
-			(pred_class, pred_conf, pred_boxpts) = pred
-
-			# filter out weak detections by ensuring the `confidence`
-			# is greater than the minimum confidence
-			if pred_conf > args["confidence"]:
-				# print prediction to terminal
-				print("[INFO] Prediction #{}: class={}, confidence={}, "
-					"boxpoints={}".format(i, CLASSES[pred_class], pred_conf,
-					pred_boxpts))
-
-				# check if we should show the prediction data
-				# on the frame
-				if args["display"] > 0:
-					# build a label consisting of the predicted class and
-					# associated probability
-					label = "{}: {:.2f}%".format(CLASSES[pred_class],
-						pred_conf * 100)
-
-					# extract information from the prediction boxpoints
-					(ptA, ptB) = (pred_boxpts[0], pred_boxpts[1])
-					ptA = (ptA[0] * DISP_MULTIPLIER, ptA[1] * DISP_MULTIPLIER)
-					ptB = (ptB[0] * DISP_MULTIPLIER, ptB[1] * DISP_MULTIPLIER)
-					(startX, startY) = (ptA[0], ptA[1])
-					y = startY - 15 if startY - 15 > 15 else startY + 15
-
-					# display the rectangle and label text
-					cv2.rectangle(image_for_result, ptA, ptB,
-						COLORS[pred_class], 2)
-					cv2.putText(image_for_result, label, (startX, y),
-						cv2.FONT_HERSHEY_SIMPLEX, 1, COLORS[pred_class], 3)
-
-		# check if we should display the frame on the screen
-		# with prediction data (you can achieve faster FPS if you
-		# do not output to the screen)
-		if args["display"] > 0:
-			# display the frame to the screen
-			cv2.imshow("Output", image_for_result)
-			key = cv2.waitKey(1) & 0xFF
-
-			# if the `q` key was pressed, break from the loop
-			if key == ord("q"):
-				break
-
-		# update the FPS counter
-		fps.update()
-	
-	# if "ctrl+c" is pressed in the terminal, break from the loop
-	except KeyboardInterrupt:
-		break
-
-	# if there's a problem reading a frame, break gracefully
-	except AttributeError:
-		break
-
-# stop the FPS counter timer
-fps.stop()
-
-# destroy all windows if we are displaying them
-if args["display"] > 0:
-	cv2.destroyAllWindows()
-
-# stop the video stream
-vs.stop()
-
-
-# display FPS information
-print("[INFO] elapsed time: {:.2f}".format(fps.elapsed()))
-print("[INFO] approx. FPS: {:.2f}".format(fps.fps()))
