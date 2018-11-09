@@ -2,6 +2,9 @@
 # python ncs_realtime_objectdetection.py --graph graphs/mobilenetgraph --display 1
 # python ncs_realtime_objectdetection.py --graph graphs/mobilenetgraph --confidence 0.5 --display 1
 
+import logging
+logging.getLogger().setLevel(logging.DEBUG)
+
 # import the necessary packages
 from mvnc import mvncapi as mvnc
 from imutils.video import VideoStream
@@ -90,6 +93,7 @@ while True:
 
 			# if the `q` key was pressed, break from the loop
 			if key == ord("q"):
+				logging.info("break")
 				break
 
 		# update the FPS counter
@@ -97,10 +101,12 @@ while True:
 	
 	# if "ctrl+c" is pressed in the terminal, break from the loop
 	except KeyboardInterrupt:
+		logging.info("break")
 		break
 
 	# if there's a problem reading a frame, break gracefully
-	except AttributeError:
+	except AttributeError, e:
+		logging.exception("problem reading frame")
 		break
 
 # stop the FPS counter timer
