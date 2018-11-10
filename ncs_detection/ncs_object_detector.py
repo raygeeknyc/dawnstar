@@ -109,13 +109,11 @@ class NCSObjectClassifier(object):
 			x2 = min(w,	int(output[base_index + 5] * w))
 			y2 = min(h,	int(output[base_index + 6] * h))
 
-			# grab the prediction class label, confidence (i.e., probability),
-			# and bounding box (x, y)-coordinates
-			pred_class = int(output[base_index + 1])
+			pred_class = NCSObjectClassifier.CLASSES[int(output[base_index + 1])]
 			pred_conf = output[base_index + 2]
 			pred_boxpts = ((x1, y1), (x2, y2))
 
-			# create prediciton tuple and append the prediction to the
+			# create prediction tuple and append the prediction to the
 			# predictions list
 			prediction = (pred_class, pred_conf, pred_boxpts)
 			predictions.append(prediction)

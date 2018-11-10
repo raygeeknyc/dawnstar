@@ -56,7 +56,7 @@ while True:
 
 			# print prediction to terminal
 			logging.info("Prediction #{}: class={}, confidence={}, "
-				"boxpoints={}".format(i, NCSObjectClassifier.CLASSES[pred_class], pred_conf,
+				"boxpoints={}".format(i, pred_class, pred_conf,
 					pred_boxpts))
 
 			# check if we should show the prediction data

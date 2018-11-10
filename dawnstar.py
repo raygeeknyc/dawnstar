@@ -86,11 +86,15 @@ class Dawnstar():
     logging.debug("object consumer started")
     while not STOP:
       try:
-        objects = self._object_queue.get(False)
+        frame = self._object_queue.get(False)
       except Empty:
         continue 
       self.frames += 1
       logging.info("Objects[{}] received".format(self.frames))
+      base_image, predictions = frame
+      for (process_image, pred) in enumerate(predictions):
+        (pred_class, pred_confidence, pred_boxpts) = pred
+        logging.info("Prediction class={}, confidence={}".format(pred_class, pred_confidence))
     logging.debug("Done consuming objects")
 
 def main():

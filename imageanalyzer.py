@@ -56,7 +56,7 @@ class ImageAnalyzer(multiprocessing.Process):
         logging.info("Processing image {}".format(frame_number))
 	predictions = self._classifier.predict(image)
 
-        self._object_queue.put(image)
+        self._object_queue.put((image, predictions))
 
     def _get_images(self):
         logging.debug("image consumer started")
