@@ -15,10 +15,9 @@ from ncs_object_detector import NCSObjectClassifier
 
 # frame dimensions should be square
 DISPLAY_DIMS = (900, 900)
-PREPROCESS_DIMS = (300, 300)
 
 # calculate the multiplier needed to scale the bounding boxes
-DISP_MULTIPLIER = DISPLAY_DIMS[0] // PREPROCESS_DIMS[0]
+DISP_MULTIPLIER = DISPLAY_DIMS[0] // NCSObjectClassifier.PREPROCESS_DIMS[0]
 
 # construct the argument parser and parse the arguments
 ap = argparse.ArgumentParser()
