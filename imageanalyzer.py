@@ -5,6 +5,8 @@ import logging
 # Used only if this is run as main
 _DEBUG = logging.INFO
 
+import ncs_detection.ncs_object_detector
+
 # Import the packages we need for drawing and displaying images
 from PIL import Image, ImageDraw
 
