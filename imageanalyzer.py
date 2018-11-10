@@ -5,7 +5,7 @@ import logging
 # Used only if this is run as main
 _DEBUG = logging.INFO
 
-import ncs_detection.ncs_object_detector
+from ncs_detection.ncs_object_detector import NCSObjectClassifier
 
 # Import the packages we need for drawing and displaying images
 from PIL import Image, ImageDraw
@@ -23,6 +23,12 @@ import threading
 
 # This is how long to sleep in various threads between shutdown checks
 POLL_SECS = 0.1
+
+
+# This is the lowest confidence score that the classifier should return
+MININUM_CONSIDERED_CONFIDENCE = 0.5
+
+GRAPH_FILENAME = "ncs_detection/graphs/mobilenetgraph"
 
 def signal_handler(sig, frame):
     global STOP
@@ -44,9 +50,12 @@ class ImageAnalyzer(multiprocessing.Process):
         self._object_queue = object_queue
         self._image_queue = image_queue
         self._stop_processing = False
+	self._classifier = NCSObjectClassifier(GRAPH_FILENAME, MININUM_CONSIDERED_CONFIDENCE)
 
     def _process_image(self, image, frame_number):
         logging.info("Processing image {}".format(frame_number))
+	predictions = classifier.predict(image)
+
         self._object_queue.put(image)
 
     def _get_images(self):
