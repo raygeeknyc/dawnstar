@@ -2,8 +2,6 @@ _Pi = False
 _Pi = True
 
 import logging
-# Used only if this is run as main
-_DEBUG = logging.INFO
 
 # Import the packages we need for drawing and displaying images
 from PIL import Image, ImageDraw
@@ -17,7 +15,6 @@ import os
 import time
 import signal
 import Queue
-import threading
 
 # This is the desired resolution of the camera
 RESOLUTION = (320, 240)
@@ -35,35 +32,20 @@ POLL_SECS = 0.1
 
 FRAME_LATENCY_WINDOW_SIZE_SECS = 1.0
 
-def signal_handler(sig, frame):
-    global STOP
-    if STOP:
-        logging.debug("imageproducer SIGTERM")
-        signal.signal(signal.SIGINT, signal.SIG_IGN)
-        os.kill(os.getpid(), signal.SIGTERM)
-    logging.debug("imageproducer STOP")
-    STOP = True
-signal.signal(signal.SIGINT, signal_handler)
-
 EMPTY_LABELS = []
 
 class ImageProducer(multiprocessing.Process):
-    def __init__(self, key_frame_queue, log_queue, logging_level):
+    def __init__(self, event, key_frame_queue, log_queue, logging_level):
         multiprocessing.Process.__init__(self)
+        self._exit = event
         self._log_queue = log_queue
         self._logging_level = logging_level
-        self._exit = multiprocessing.Event()
         self._key_frame_queue = key_frame_queue
-        self._stop_capturing = False
         self._last_frame_at = 0.0
         self._frame_delay_secs = 1.0/CAPTURE_RATE_FPS
         self._current_frame_seq = 0
         self._frame_window_start = 0
         self._frame_latency_window_start = 0
-
-    def stop(self):
-        logging.debug("Image producer received shutdown")
-        self._exit.set()
 
     def _init_logging(self):
         handler = ChildMultiProcessingLogHandler(self._log_queue)
@@ -129,19 +111,12 @@ class ImageProducer(multiprocessing.Process):
         self._init_camera()
         self._attempt_motion_training()
         try:
-            self._stop_capturing = False
-            self._capturer = threading.Thread(target=self._capture_frames)
-            self._capturer.start()
-            while not self._exit.is_set():
-                time.sleep(POLL_SECS)
-            logging.debug("Shutting down image capture thread")
-            self._stop_capturing = True
-            self._capturer.join()
+            self._capture_frames()
         except Exception, e:
             logging.exception("Error in vision main thread")
         finally:
+            self._cleanup()
             logging.debug("Exiting image capture")
-            sys.exit(0)
 
     def _init_camera(self):
         logging.error("overide _init_camera()")
@@ -157,7 +132,7 @@ class ImageProducer(multiprocessing.Process):
         logging.debug("capturing frames")
         try:
             self.get_next_frame()
-            while not self._stop_capturing:
+            while not self._exit.is_set():
                 self._prev_frame = self._current_frame
                 self.get_next_frame()
                 if self.is_image_difference_over_threshold(self._motion_threshold):
@@ -166,7 +141,6 @@ class ImageProducer(multiprocessing.Process):
         except Exception, e:
             logging.exception("Error in capture_frames")
         logging.debug("Exiting vision capture thread")
-        self._cleanup()
 
     def _cleanup(self):
         logging.debug("closing key frame queue")
@@ -207,50 +181,6 @@ class PiImageProducer(ImageProducer):
   def _close_video(self):
       self._camera.close()
 
-def consume_images(image_queue):
-    logging.debug("image consumer started")
-    _, incoming_images = image_queue
-    try:
-        while True:
-            frame_seq, image = incoming_images.recv()
-            logging.debug("Frame {} received".format(frame_seq))
-    except EOFError:
-        logging.debug("Done watching")
-
-def main():
-  global STOP
-  STOP = False
-
-  try:
-    log_stream = sys.stderr
-    log_queue = multiprocessing.Queue(100)
-    handler = ParentMultiProcessingLogHandler(logging.StreamHandler(log_stream), log_queue)
-    logging.getLogger("").addHandler(handler)
-    logging.getLogger("").setLevel(_DEBUG)
-
-    image_queue = multiprocessing.Pipe()
-    image_producer = frame_provider(image_queue, log_queue, logging.getLogger("").getEffectiveLevel())
-    image_producer.start()
-
-    unused, _ = image_queue
-    unused.close()
-
-    image_consumer = threading.Thread(target = consume_images, args=(image_queue,))
-    image_consumer.start()
-    logging.debug("waiting for stop signal")
-    while not STOP:
-        time.sleep(POLL_SECS)
-    logging.debug("STOP seen in main")
- 
-  except Exception, e:
-    logging.exception("Error raised in main()")
-  finally:
-    logging.debug("Ending")
-    image_producer.stop()
-    image_producer.join()
-    logging.debug("background process returned, exiting main process")
-    sys.exit(0)
-
 if _Pi:
   logging.debug("Using PiCamera for video capture")
   from picamera import PiCamera
@@ -259,6 +189,3 @@ if _Pi:
 else:
   import cv2
   frame_provider = WebcamImageProducer
-
-if __name__ == "__main__":
-  main()

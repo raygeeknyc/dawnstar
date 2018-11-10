@@ -2,8 +2,6 @@ _Pi = False
 _Pi = True
 
 import logging
-# Used only if this is run as main
-_DEBUG = logging.INFO
 
 from ncs_detection.ncs_object_detector import NCSObjectClassifier
 
@@ -30,46 +28,40 @@ MININUM_CONSIDERED_CONFIDENCE = 0.5
 
 GRAPH_FILENAME = "ncs_detection/graphs/mobilenetgraph"
 
-def signal_handler(sig, frame):
-    global STOP
-    if STOP:
-        logging.debug("imageproducer SIGTERM")
-        signal.signal(signal.SIGINT, signal.SIG_IGN)
-        os.kill(os.getpid(), signal.SIGTERM)
-    logging.debug("imageproducer STOP")
-    STOP = True
-signal.signal(signal.SIGINT, signal_handler)
-
 class ImageAnalyzer(multiprocessing.Process):
-    def __init__(self, image_queue, object_queue, log_queue, logging_level):
+    def __init__(self, event, image_queue, object_queue, log_queue, logging_level):
         multiprocessing.Process.__init__(self)
+        self._exit = event
         self._log_queue = log_queue
         self._logging_level = logging_level
-        self._exit = multiprocessing.Event()
         self._image_queue = image_queue
         self._object_queue = object_queue
         self._image_queue = image_queue
-        self._stop_processing = False
 	self._classifier = NCSObjectClassifier(GRAPH_FILENAME, MININUM_CONSIDERED_CONFIDENCE)
 
     def _process_image(self, image, frame_number):
-        logging.info("Processing image {}".format(frame_number))
+        logging.debug("Processing image {}".format(frame_number))
 	predictions = self._classifier.predict(image)
-
-        self._object_queue.put((image, predictions))
+       	if not self._exit.is_set():
+        	logging.debug("Queuing processed image {}".format(frame_number))
+        	self._object_queue.put((image, predictions))
 
     def _get_images(self):
         logging.debug("image consumer started")
         image = None
-        while not self._stop_processing:
+        while not self._exit.is_set():
             try:
                 t = self._image_queue.get(False)
+        	if self._exit.is_set():
+                    continue
                 logging.debug("processing queue had an entry")
                 frame_number, image = t
                 logging.debug("Image {} received".format(frame_number))
             except Queue.Empty:
                 if image is None:
                     logging.debug("Empty processing queue, waiting")
+                    continue
+        	if self._exit.is_set():
                     continue
                 self._process_image(image, frame_number)
                 image = None
@@ -78,11 +70,8 @@ class ImageAnalyzer(multiprocessing.Process):
         logging.debug("Stopped image consumer")
  
     def _cleanup(self):
+        logging.debug("Cleaning up")
         self._object_queue.close()
-
-    def stop(self):
-        logging.debug("Image analyzer received shutdown")
-        self._exit.set()
 
     def _init_logging(self):
         handler = ChildMultiProcessingLogHandler(self._log_queue)
@@ -93,18 +82,9 @@ class ImageAnalyzer(multiprocessing.Process):
         self._init_logging()
         logging.debug("Image analyzer running")
         try:
-            self._stop_processing = False
-            self._receiver = threading.Thread(target=self._get_images)
-            self._receiver.start()
-
-            while not self._exit.is_set():
-                time.sleep(POLL_SECS)
-            logging.debug("Shutting down image receiver")
-            self._stop_processing = True
-            self._receiver.join()
+            self._get_images()
         except Exception, e:
             logging.exception("Error in analyzer main thread")
         finally:
             self._cleanup()
-            logging.debug("Exiting analyzer")
-            sys.exit(0)
+            logging.debug("Exiting image analyzer")

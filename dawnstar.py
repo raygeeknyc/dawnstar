@@ -17,26 +17,17 @@ from Queue import Empty
 from multiprocessingloghandler import ParentMultiProcessingLogHandler
 
 REFRESH_DELAY_SECS = 2
+POLL_SECS = 0.1
 IP_ADDRESS_RESOLUTION_DELAY_SECS = 1
+STOP = None
 
 from display import DisplayInfo, Display
 import imagecapture
 import imageanalyzer
 
-def signal_handler(sig, frame):
-    global STOP
-    if STOP:
-        logging.info("Robot SIGTERM")
-        signal.signal(signal.SIGINT, signal.SIG_IGN)
-        os.kill(os.getpid(), signal.SIGTERM)
-    logging.info("Robot STOP")
-    STOP = True
-signal.signal(signal.SIGINT, signal_handler)
-
 class Dawnstar():
-  def __init__(self, object_queue):
-    global STOP
-
+  def __init__(self, event, object_queue):
+    self._process_event = event
     self.ip_address = None
     self.frames = 0
     self._screen = Display()
@@ -44,15 +35,13 @@ class Dawnstar():
     print('Ip address: {}'.format(self._get_ip_address()))
 
   def startup(self):
-    global STOP
-
     self._object_consumer = threading.Thread(target = self._process_objects, args=())
     self._object_consumer.start()
 
     self._screen_updater = threading.Thread(target = self._maintain_display, args=())
     self._screen_updater.start()
 
-    while not STOP and not self.ip_address:
+    while not self.ip_address:
       self._get_ip_address()
       time.sleep(IP_ADDRESS_RESOLUTION_DELAY_SECS)
      
@@ -69,10 +58,9 @@ class Dawnstar():
       return self.ip_address
 
   def _maintain_display(self):
-    global STOP
     prev_frames = None
     prev_ip_address = None
-    while not STOP:
+    while not self._process_event.is_set():
       if self.ip_address != prev_ip_address or self.frames != prev_frames:
         info = DisplayInfo()
         info.ip = self.ip_address
@@ -82,9 +70,8 @@ class Dawnstar():
         self._screen.refresh(info)
 
   def _process_objects(self):
-    global STOP
     logging.debug("object consumer started")
-    while not STOP:
+    while not self._process_event.is_set():
       try:
         frame = self._object_queue.get(False)
       except Empty:
@@ -98,10 +85,13 @@ class Dawnstar():
     logging.debug("Done consuming objects")
 
 def main():
-  global STOP
   STOP = False
-  image_producer = None
 
+  image_producer = None
+  image_analyzer = None
+
+  process_event = multiprocessing.Event()
+  
   try:
     log_stream = sys.stderr
     log_queue = multiprocessing.Queue(100)
@@ -112,38 +102,38 @@ def main():
     image_queue = multiprocessing.Queue()
 
     object_queue = multiprocessing.Queue()
-    robot = Dawnstar(object_queue)
+    robot = Dawnstar(process_event, object_queue)
 
-    image_analyzer = imageanalyzer.ImageAnalyzer(image_queue, object_queue, log_queue, logging.getLogger("").getEffectiveLevel())
-    logging.debug("Starting image analyzer")
+    image_analyzer = imageanalyzer.ImageAnalyzer(process_event, image_queue, object_queue, log_queue, logging.getLogger("").getEffectiveLevel())
+    logging.info("Starting image analyzer")
     image_analyzer.start()
 
-    image_producer = imagecapture.frame_provider(image_queue, log_queue, logging.getLogger("").getEffectiveLevel())
-    logging.debug("Starting image producer")
+    image_producer = imagecapture.frame_provider(process_event, image_queue, log_queue, logging.getLogger("").getEffectiveLevel())
+    logging.info("Starting image producer")
     image_producer.start()
 
     logging.info("Starting Robot")
     robot.startup()
 
     logging.info("Robot running")
-    while not STOP:
-        time.sleep(REFRESH_DELAY_SECS)
-    logging.debug("STOP seen in main")
- 
+    try:
+      while True:
+        time.sleep(POLL_SECS)
+    except KeyboardInterrupt, e:
+        logging.info("Interrupted")
+        process_event.set()
   except Exception, e:
     logging.exception("Error raised in main()")
   finally:
     logging.info("Ending")
     if image_producer:
-      image_producer.stop()
-      logging.debug("Waiting for image producer process")
+      logging.info("Waiting for image producer process")
       image_producer.join()
-      logging.debug("image producer process returned")
+      logging.info("image producer process returned")
     if image_analyzer:
-      image_analyzer.stop()
-      logging.debug("Waiting for analyzer process")
+      logging.info("Waiting for analyzer process")
       image_analyzer.join()
-      logging.debug("analyzer process returned")
+      logging.info("analyzer process returned")
   sys.exit(0)
 
 if __name__ == "__main__":
