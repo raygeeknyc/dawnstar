@@ -34,7 +34,7 @@ args = vars(ap.parse_args())
 
 # open a pointer to the video stream thread and allow the buffer to
 # start to fill, then start the FPS counter
-print("[INFO] starting the video stream and FPS counter...")
+logging.info("starting the video stream and FPS counter...")
 vs = VideoStream(usePiCamera=True).start()
 time.sleep(1)
 fps = FPS().start()
@@ -58,8 +58,8 @@ while True:
 			(pred_class, pred_conf, pred_boxpts) = pred
 
 			# print prediction to terminal
-			print("[INFO] Prediction #{}: class={}, confidence={}, "
-				"boxpoints={}".format(i, CLASSES[pred_class], pred_conf,
+			logging.info("Prediction #{}: class={}, confidence={}, "
+				"boxpoints={}".format(i, NCSObjectClassifier.CLASSES[pred_class], pred_conf,
 					pred_boxpts))
 
 			# check if we should show the prediction data
@@ -67,7 +67,7 @@ while True:
 			if args["display"] > 0:
 				# build a label consisting of the predicted class and
 				# associated probability
-				label = "{}: {:.2f}%".format(CLASSES[pred_class],
+				label = "{}: {:.2f}%".format(NCSObjectClassifier.CLASSES[pred_class],
 					pred_conf * 100)
 
 				# extract information from the prediction boxpoints
@@ -122,5 +122,5 @@ vs.stop()
 classifier.cleanup()
 
 # display FPS information
-print("[INFO] elapsed time: {:.2f}".format(fps.elapsed()))
-print("[INFO] approx. FPS: {:.2f}".format(fps.fps()))
+logging.info("elapsed time: {:.2f}".format(fps.elapsed()))
+logging.info("approx. FPS: {:.2f}".format(fps.fps()))
