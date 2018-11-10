@@ -54,7 +54,7 @@ class ImageAnalyzer(multiprocessing.Process):
 
     def _process_image(self, image, frame_number):
         logging.info("Processing image {}".format(frame_number))
-	predictions = classifier.predict(image)
+	predictions = self._classifier.predict(image)
 
         self._object_queue.put(image)
 
