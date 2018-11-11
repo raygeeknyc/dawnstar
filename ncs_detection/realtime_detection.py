@@ -47,38 +47,39 @@ while True:
 		image_for_result = cv2.resize(image_for_result, DISPLAY_DIMS)
 
 		# use the NCS to acquire predictions
-		predictions = classifier.get_most_interesting_object(frame)
+		object_predictions = classifier.get_likely_objects(frame)
+		interesting_object = classifier.get_most_interesting_object(object_predictions)
 
-		# loop over our predictions
-		for (i, pred) in enumerate(predictions):
-			# extract prediction data for readability
-			(pred_class, pred_conf, pred_boxpts) = pred
+		if not interesting_object:
+			continue
+		# extract prediction data for readability
+		(pred_class, pred_conf, pred_boxpts) = interesting_object
 
-			# print prediction to terminal
-			logging.info("Prediction #{}: class={}, confidence={}, "
-				"boxpoints={}".format(i, pred_class, pred_conf,
-					pred_boxpts))
+		# print prediction to terminal
+		logging.info("Object: class={}, confidence={}, "
+			"boxpoints={}".format(pred_class, pred_conf,
+				pred_boxpts))
 
-			# check if we should show the prediction data
-			# on the frame
-			if args["display"] > 0:
-				# build a label consisting of the predicted class and
-				# associated probability
-				label = "{}: {:.2f}%".format(NCSObjectClassifier.CLASSES[pred_class],
-					pred_conf * 100)
+		# check if we should show the prediction data
+		# on the frame
+		if args["display"] > 0:
+			# build a label consisting of the predicted class and
+			# associated probability
+			label = "{}: {:.2f}%".format(NCSObjectClassifier.CLASSES[pred_class],
+				pred_conf * 100)
 
-				# extract information from the prediction boxpoints
-				(ptA, ptB) = (pred_boxpts[0], pred_boxpts[1])
-				ptA = (ptA[0] * DISP_MULTIPLIER, ptA[1] * DISP_MULTIPLIER)
-				ptB = (ptB[0] * DISP_MULTIPLIER, ptB[1] * DISP_MULTIPLIER)
-				(startX, startY) = (ptA[0], ptA[1])
-				y = startY - 15 if startY - 15 > 15 else startY + 15
+			# extract information from the prediction boxpoints
+			(ptA, ptB) = (pred_boxpts[0], pred_boxpts[1])
+			ptA = (ptA[0] * DISP_MULTIPLIER, ptA[1] * DISP_MULTIPLIER)
+			ptB = (ptB[0] * DISP_MULTIPLIER, ptB[1] * DISP_MULTIPLIER)
+			(startX, startY) = (ptA[0], ptA[1])
+			y = startY - 15 if startY - 15 > 15 else startY + 15
 
-				# display the rectangle and label text
-				cv2.rectangle(image_for_result, ptA, ptB,
-					COLORS[pred_class], 2)
-				cv2.putText(image_for_result, label, (startX, y),
-					cv2.FONT_HERSHEY_SIMPLEX, 1, COLORS[pred_class], 3)
+			# display the rectangle and label text
+			cv2.rectangle(image_for_result, ptA, ptB,
+				COLORS[pred_class], 2)
+			cv2.putText(image_for_result, label, (startX, y),
+				cv2.FONT_HERSHEY_SIMPLEX, 1, COLORS[pred_class], 3)
 
 		# check if we should display the frame on the screen
 		# with prediction data (you can achieve faster FPS if you

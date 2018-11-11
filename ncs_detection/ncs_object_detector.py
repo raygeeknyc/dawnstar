@@ -72,17 +72,16 @@ class NCSObjectClassifier(object):
 		# return the image to the calling function
 		return preprocessed
 
-	def get_most_interesting_object(self, image):
-		objects_over_threshold = get_likely_objects(image)
+	def get_most_interesting_object(self, predictions):
 		prioritized_objects = {}
-		for object in objects_over_threshold:
+		for object in predictions:
 			_class, _confidence, _bound_box = object
-			if _class in INTERESTING_CLASSES.keys():
+			if _class not in NCSObjectClassifier.INTERESTING_CLASSES.keys():
 				continue
-			if INTERESTING_CLASSES[_class] not in prioritized_objects.keys():
-				prioritized_objects[INTERESTING_CLASSES[_class]] = [object]
+			if NCSObjectClassifier.INTERESTING_CLASSES[_class] not in prioritized_objects.keys():
+				prioritized_objects[NCSObjectClassifier.INTERESTING_CLASSES[_class]] = [object]
 			else:
-				prioritized_objects[INTERESTING_CLASSES[_class]].append(object)
+				prioritized_objects[NCSObjectClassifier.INTERESTING_CLASSES[_class]].append(object)
 		if not prioritized_objects:
 			return None
 		highest_priority = sorted(prioritized_objects.keys())[0]
