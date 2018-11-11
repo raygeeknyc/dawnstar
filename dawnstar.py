@@ -82,7 +82,9 @@ class Dawnstar():
       logging.info("Objects[{}] received".format(self.frames))
       base_image, predictions, interesting_object = frame
       if interesting_object:
-        self.trackable_objects += 1
+        self.trackable_objects = 1
+      else:
+        self.trackable_objects = 0
       for (process_image, pred) in enumerate(predictions):
         (pred_class, pred_confidence, pred_boxpts) = pred
         logging.info("Prediction class={}, confidence={}".format(pred_class, pred_confidence))
