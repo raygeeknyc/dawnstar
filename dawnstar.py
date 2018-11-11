@@ -30,6 +30,7 @@ class Dawnstar():
     self._process_event = event
     self.ip_address = None
     self.frames = 0
+    self.trackable_objects = 0
     self._screen = Display()
     self._object_queue = object_queue
     print('Ip address: {}'.format(self._get_ip_address()))
@@ -64,6 +65,7 @@ class Dawnstar():
       if self.ip_address != prev_ip_address or self.frames != prev_frames:
         info = DisplayInfo()
         info.ip = self.ip_address
+        info.trackable_objects = self.trackable_objects
         info.frames = self.frames
         prev_frames = self.frames
         prev_ip_address = self.ip_address
@@ -78,7 +80,9 @@ class Dawnstar():
         continue 
       self.frames += 1
       logging.info("Objects[{}] received".format(self.frames))
-      base_image, predictions = frame
+      base_image, predictions, interesting_object = frame
+      if interesting_object:
+        self.trackable_objects += 1
       for (process_image, pred) in enumerate(predictions):
         (pred_class, pred_confidence, pred_boxpts) = pred
         logging.info("Prediction class={}, confidence={}".format(pred_class, pred_confidence))

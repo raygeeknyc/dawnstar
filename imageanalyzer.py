@@ -41,10 +41,11 @@ class ImageAnalyzer(multiprocessing.Process):
 
     def _process_image(self, image, frame_number):
         logging.debug("Processing image {}".format(frame_number))
-	predictions = self._classifier.predict(image)
+	predictions = self._classifier.get_likely_objects(image)
+	interesting_object = self._classifier.get_most_interesting_object(oredictions)
        	if not self._exit.is_set():
         	logging.debug("Queuing processed image {}".format(frame_number))
-        	self._object_queue.put((image, predictions))
+        	self._object_queue.put((image, predictions, interesting_object))
 
     def _get_images(self):
         logging.debug("image consumer started")
@@ -63,7 +64,7 @@ class ImageAnalyzer(multiprocessing.Process):
                     continue
         	if self._exit.is_set():
                     continue
-                self._process_image(image, frame_number)
+                _, _, interesting_object = self._process_image(image, frame_number)
                 image = None
             except Exception, e:
                 logging.exception("error consuming images")
