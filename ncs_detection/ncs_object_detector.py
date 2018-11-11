@@ -100,23 +100,24 @@ class NCSObjectClassifier(object):
 				not np.isfinite(output[base_index + 6])):
 				continue
 
-			# extract the image width and height and clip the boxes to the
-			# image size in case network returns boxes outside of the image
-			# boundaries
-			(h, w) = image.shape[:2]
-			x1 = max(0, int(output[base_index + 3] * w))
-			y1 = max(0, int(output[base_index + 4] * h))
-			x2 = min(w,	int(output[base_index + 5] * w))
-			y2 = min(h,	int(output[base_index + 6] * h))
-
-			pred_class = NCSObjectClassifier.CLASSES[int(output[base_index + 1])]
 			pred_conf = output[base_index + 2]
-			pred_boxpts = ((x1, y1), (x2, y2))
+			if pred_conf >= self.confidence_threshold:
+				# extract the image width and height and clip the boxes to the
+				# image size in case network returns boxes outside of the image
+				# boundaries
+				(h, w) = image.shape[:2]
+				x1 = max(0, int(output[base_index + 3] * w))
+				y1 = max(0, int(output[base_index + 4] * h))
+				x2 = min(w,	int(output[base_index + 5] * w))
+				y2 = min(h,	int(output[base_index + 6] * h))
 
-			# create prediction tuple and append the prediction to the
-			# predictions list
-			prediction = (pred_class, pred_conf, pred_boxpts)
-			predictions.append(prediction)
+				pred_class = NCSObjectClassifier.CLASSES[int(output[base_index + 1])]
+				pred_boxpts = ((x1, y1), (x2, y2))
+
+				# create prediction tuple and append the prediction to the
+				# predictions list
+				prediction = (pred_class, pred_conf, pred_boxpts)
+				predictions.append(prediction)
 
 		# return the list of predictions to the calling function
 		return predictions
