@@ -47,7 +47,7 @@ while True:
 		image_for_result = cv2.resize(image_for_result, DISPLAY_DIMS)
 
 		# use the NCS to acquire predictions
-		predictions = classifier.predict(frame)
+		predictions = classifier.get_most_interesting_object(frame)
 
 		# loop over our predictions
 		for (i, pred) in enumerate(predictions):

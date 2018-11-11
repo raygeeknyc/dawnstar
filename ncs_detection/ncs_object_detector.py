@@ -35,6 +35,8 @@ class NCSObjectClassifier(object):
 		"diningtable", "dog", "horse", "motorbike", "person",
 		"pottedplant", "sheep", "sofa", "train", "tvmonitor")
 
+	INTERESTING_CLASSES = {"cat":2, "dog":2, "person":1, "car":3, "bicycle":3, "bird":4}
+
         
 	def __init__(self, graph_filename, min_confidence):
 		self.graph_filename = graph_filename
@@ -70,7 +72,34 @@ class NCSObjectClassifier(object):
 		# return the image to the calling function
 		return preprocessed
 
-	def predict(self, image):
+	def get_most_interesting_object(self, image):
+		objects_over_threshold = get_likely_objects(image)
+		prioritized_objects = {}
+		for object in objects_over_threshold:
+			_class, _confidence, _bound_box = object
+			if _class in INTERESTING_CLASSES.keys():
+				continue
+			if INTERESTING_CLASSES[_class] not in prioritized_objects.keys():
+				prioritized_objects[INTERESTING_CLASSES[_class]] = [object]
+			else:
+				prioritized_objects[INTERESTING_CLASSES[_class]].append(object)
+		if not prioritized_objects:
+			return None
+		highest_priority = sorted(prioritized_objects.keys())[0]
+		highest_priority_objects = prioritized_objects[highest_priority]
+		max_area = 0
+		for important_object in highest_priority_objects:
+			_, _, _box  = important_object
+			area = ((_box[1][0] - _box[0][0]) *
+				(_box[1][1] - _box[0][1]))
+			if area > max_area:
+				max_area = area
+				largest_object = important_object
+		if max_area == 0:
+			return []
+		return largest_object
+
+	def get_likely_objects(self, image):
 		# preprocess the image
 		image = self.preprocess_image(image)
 
