@@ -77,8 +77,8 @@ class Display(object):
     trackable_objects = 0
 
     y += line_height + 1
-    draw.text((x, y), 'Frames:{} Tracking:{}'.format(self._info.frames, self._info.trackable_objects), font=font, fill=255)
-    logging.debug('Frames: {}, Tracking:{}'.format(self._info.frames, self._info.trackable_objects))
+    draw.text((x, y), 'Frame:{} Track:{}'.format(self._info.frames, self._info.trackable_objects), font=font, fill=255)
+    logging.debug('Frame: {}, Track:{}'.format(self._info.frames, self._info.trackable_objects))
 
     tracked_bounds = (0,0)
     tracked_zone = (0,0)
