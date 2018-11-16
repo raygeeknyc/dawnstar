@@ -1,4 +1,5 @@
 # The motor controller portion of a K9
+# Talks to a device over i2c that presumably controls 2 variable speed drive trains
 
 import logging
 _DEBUG=logging.DEBUG
