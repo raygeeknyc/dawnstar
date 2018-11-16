@@ -46,5 +46,6 @@ def main():
   walker = Ambulator(DEVICE_ADDRESS)
   sys.exit(0)
 
+logging.getLogger().setLevel(_DEBUG)
 if __name__ == "__main__":
   main()
