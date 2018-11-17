@@ -111,7 +111,7 @@ void setup() {
   right_motor = new BiDirectionalMotor(9, 11, 12, right_led);
   left_motor = new BiDirectionalMotor(10, 7, 8, left_led);
   Serial.println("/setup");
-  Serial.send_now();
+  //Serial.send_now();
   delay(1000);
 }
 
