@@ -4,9 +4,12 @@
 
 #define LED_PIN 13
 
-int recvd_length = 0;
+int buffer_length = 0;
 boolean recvd;
 char recv_buffer[BUFFER_LENGTH];
+int left_speed = 0, right_speed = 0;
+#define LEFT_COMMAND 'L'
+#define RIGHT_COMMAND 'R'
 
 void setup() {
   pinMode(LED_PIN, OUTPUT);
@@ -23,32 +26,41 @@ void setup() {
 }
 
 void receiveEvent(int msgLength)
-{
-  if (! recvd) {
-  recvd_length = msgLength;
-  for (int i=0; i<min(recvd_length, BUFFER_LENGTH); i++) {
-    recv_buffer[i] = (char)Wire.read();
+{  
+  char command = ' ';
+  if (msgLength) {
+    command = (char)Wire.read();
   }
-  int extra = msgLength - BUFFER_LENGTH;
-  while (extra-- > 0) {
+
+  if (command == LEFT_COMMAND) {
+    left_speed = Wire.available()?Wire.read():0;
+    left_speed += (Wire.available()?Wire.read():0) * 256;
+  } else if (command == RIGHT_COMMAND) {
+    right_speed = Wire.available()?Wire.read():0;
+    right_speed += (Wire.available()?Wire.read():0) * 256;
+  }
+  while (Wire.available()) {
     Wire.read();
   }
   recvd = true;
-  }
 }
 
 void requestEvent()
 {
-  Wire.write(recv_buffer);
+  Wire.write(right_speed  & 0xFF);
+  Wire.write((right_speed >> 8) & 0xFF);
+  Wire.write(left_speed  & 0xFF);
+  Wire.write((left_speed >> 8) & 0xFF);
 }
 
 void loop() {
   if (recvd) {
     digitalWrite(LED_PIN, HIGH);
-    Serial.print("recvd: ");
-    Serial.println(recvd_length);
+    Serial.print("left: ");
+    Serial.print(left_speed);
+    Serial.print(" right: ");
+    Serial.println(right_speed);
     recvd = false;
-    delay(100);
     digitalWrite(LED_PIN, LOW);
   }
 }
