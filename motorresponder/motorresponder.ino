@@ -2,15 +2,24 @@
 #define DEVICE_ADDRESS 0x15
 #define BUFFER_LENGTH 32
 
+#define LED_PIN 13
+
 int recvd_length = 0;
 boolean recvd;
 char recv_buffer[BUFFER_LENGTH];
 
 void setup() {
+  pinMode(LED_PIN, OUTPUT);
+  digitalWrite(LED_PIN, HIGH);
+  Serial.begin(9600);
+  Serial.println("setup");
   Wire.begin(DEVICE_ADDRESS);
   Wire.onRequest(requestEvent);
   Wire.onReceive(receiveEvent);
   recvd = false;  
+  delay(100);
+  digitalWrite(LED_PIN, LOW);
+  Serial.println("/setup");
 }
 
 void receiveEvent(int msgLength)
@@ -30,13 +39,16 @@ void receiveEvent(int msgLength)
 
 void requestEvent()
 {
-  Wire.write("hello "); // respond with test message of 6 bytes
+  Wire.write(recv_buffer);
 }
 
 void loop() {
   if (recvd) {
+    digitalWrite(LED_PIN, HIGH);
     Serial.print("recvd: ");
     Serial.println(recvd_length);
     recvd = false;
+    delay(100);
+    digitalWrite(LED_PIN, LOW);
   }
 }
