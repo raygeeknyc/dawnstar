@@ -5,13 +5,11 @@ import logging
 _DEBUG=logging.DEBUG
 _DEBUG=logging.INFO
 
-import os
 import sys
-import time
 import smbus
 
 I2C_BUS = 1
-DEVICE_ADDRESS = 0x15 #7 bit address (will be left shifted to add the read write bit)
+SLAVE_DEVICE_ADDRESS = 0x15 #7 bit address (will be left shifted to add the read write bit)
 
 class Ambulator():
     def __init__(self, slave_device):
@@ -33,17 +31,16 @@ class Ambulator():
         self._send_command(CMD_LEFT, speed)
 
     def _send_command(self, command, value):
-        self._bus.write_word_data(self._slave_device, command, value)
+        self._bus.write_i2c_block_data(self._slave_device, command, value)
 
-    def get_value(self, label):
-        command = '?'
-        self._bus.write_word_data(self._slave_device, command, value)
-        value = self._bus.read_word_data(self._slave_device, 0x00)
-        logging.info("get_value {} returned {}".format(label, value))
+    def get_values(self):
+        command = 0
+        value = self._bus.read_i2c_block_data(self._slave_device, command)
+        logging.info("get_value returned {}".format(value))
         return value
 
 def main():
-  walker = Ambulator(DEVICE_ADDRESS)
+  walker = Ambulator(SLAVE_DEVICE_ADDRESS)
   sys.exit(0)
 
 logging.getLogger().setLevel(_DEBUG)
