@@ -28,8 +28,8 @@ class Ambulator():
         self.left(REST_SPEED)
 
     def forward(self, speed):
-        self.right(speed)
         self.left(speed)
+        self.right(speed)
 
     def backward(self, speed):
         self.right(-1*speed)
