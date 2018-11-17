@@ -3,14 +3,15 @@
 # drive trains
 
 import logging
-_DEBUG=logging.DEBUG
 _DEBUG=logging.INFO
-MAX_SPEED = 1024
+_DEBUG=logging.DEBUG
+MAX_SPEED = 2048
 MIN_SPEED = -1 * MAX_SPEED
 REST_SPEED = 0
 
 import sys
 import smbus
+import struct
 
 I2C_BUS = 1
 SLAVE_DEVICE_ADDRESS = 0x15 #7 bit address (will be left shifted to add the read write bit)
@@ -46,18 +47,35 @@ class Ambulator():
         self._send_command(_CMD_LEFT, speed)
 
     def _send_command(self, command, value):
-        self._bus.write_i2c_block_data(self._slave_device_address, command, [value])
+        high_byte = value & 0xFF
+        low_byte = (value >> 8) & 0xFF
+        self._bus.write_i2c_block_data(self._slave_device_address, command, [high_byte, low_byte])
 
     def get_values(self):
         command = 0
-        value = self._bus.read_i2c_block_data(self._slave_device_address, command)
-        logging.info("get_value returned {}".format(value))
-        return value
+        bytes = self._bus.read_i2c_block_data(self._slave_device_address, command)
+        logging.debug("Received {} bytes".format(len(bytes)))
+        values = []
+        for position in range(0, len(bytes), 2):
+            value = struct.unpack('<h', ''.join([chr(i) for i in bytes[position:position+2]]))[0]
+            values.append(value)
+        return values
 
 def main():
   walker = Ambulator(SLAVE_DEVICE_ADDRESS)
-  walker.forward(500)
-  walker.get_values()
+  walker.forward(127)
+  values = walker.get_values()
+  logging.debug("Values: {}".format(values))
+  left_speed = values[0]
+  right_speed = values[1]
+  walker.left(678)
+  walker.right(-105)
+  values = walker.get_values()
+  logging.debug("Values: {}".format(values))
+  walker.left(-1000)
+  walker.right(-3000)
+  values = walker.get_values()
+  logging.debug("Values: {}".format(values))
   sys.exit(0)
 
 logging.getLogger().setLevel(_DEBUG)
