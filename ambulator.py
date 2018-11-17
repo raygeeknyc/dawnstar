@@ -1,9 +1,13 @@
 # The motor controller portion of a K9
-# Talks to a device over i2c that presumably controls 2 variable speed drive trains
+# Talks to a device over i2c that presumably controls 2 variable speed
+# drive trains
 
 import logging
 _DEBUG=logging.DEBUG
 _DEBUG=logging.INFO
+MAX_SPEED = 1024
+MIN_SPEED = -1 * MAX_SPEED
+REST_SPEED = 0
 
 import sys
 import smbus
@@ -16,18 +20,26 @@ class Ambulator():
         self._bus = smbus.SMBus(I2C_BUS)
         self._slave_device = slave_device
 
+    def stop(self):
+        self.right(REST_SPEED)
+        self.left(REST_SPEED)
+
     def forward(self, speed):
-        self._send_command(CMD_RIGHT, speed)
-        self._send_command(CMD_LEFT, speed)
+        self.right(speed)
+        self.left(speed)
 
     def backward(self, speed):
-        self._send_command(CMD_RIGHT, -1*speed)
-        self._send_command(CMD_LEFT, -1*speed)
+        self.right(-1*speed)
+        self.left(-1*speed)
 
     def right(self, speed):
+        speed = min(speed, MAX_SPEED)
+        speed = max(speed, MIN_SPEED)
         self._send_command(CMD_RIGHT, speed)
 
     def left(self, speed):
+        speed = min(speed, MAX_SPEED)
+        speed = max(speed, MIN_SPEED)
         self._send_command(CMD_LEFT, speed)
 
     def _send_command(self, command, value):
