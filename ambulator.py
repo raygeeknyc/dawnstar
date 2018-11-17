@@ -2,6 +2,7 @@
 # Talks to a device over i2c that presumably controls 2 variable speed
 # drive trains
 
+import time
 import logging
 _DEBUG=logging.INFO
 _DEBUG=logging.DEBUG
@@ -63,7 +64,7 @@ class Ambulator():
 
 def main():
   walker = Ambulator(SLAVE_DEVICE_ADDRESS)
-  walker.forward(127)
+  walker.backward(127)
   values = walker.get_values()
   logging.debug("Values: {}".format(values))
   left_speed = values[0]
