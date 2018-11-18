@@ -62,6 +62,22 @@ class NCSObjectClassifier(object):
 		self._graph = self.__class__.device.AllocateGraph(graph_in_memory)
 
 	@staticmethod
+	def area(point1, point2):
+		area = (point2[0] - point1[0]) * (point2[1] - point1[1])
+		return max(0, area)
+
+	@staticmethod
+	def overlap_area(prediction_1, prediction_2):
+		_, _, pred_1_box, _, _ = prediction_1
+		_, _, pred_2_box, _, _ = prediction_2
+		overlap_region = ((max(pred_1_box[0][0], pred_2_box[0][0]),
+			max(pred_1_box[0][1], pred_2_box[0][1])),
+			(max(pred_1_box[1][0], pred_2_box[1][0]),
+			max(pred_1_box[1][1], pred_2_box[1][1])))
+		overlap_area = NCSObjectClassifier.area(overlap_region[0], overlap_region[1])
+		return overlap_area
+
+	@staticmethod
 	def preprocess_image(input_image):
 		# preprocess the image
 		preprocessed = cv2.resize(input_image, NCSObjectClassifier.PREPROCESS_DIMS)
@@ -88,9 +104,7 @@ class NCSObjectClassifier(object):
 		highest_priority_objects = prioritized_objects[highest_priority]
 		max_area = 0
 		for important_object in highest_priority_objects:
-			_, _, _box  = important_object
-			area = ((_box[1][0] - _box[0][0]) *
-				(_box[1][1] - _box[0][1]))
+			_, _, _, area  = important_object
 			if area > max_area:
 				max_area = area
 				largest_object = important_object
@@ -141,10 +155,12 @@ class NCSObjectClassifier(object):
 
 				pred_class = NCSObjectClassifier.CLASSES[int(output[base_index + 1])]
 				pred_boxpts = ((x1, y1), (x2, y2))
+			        pred_area = NCSObjectClassifer.area(pred_boxpts[0], pred_boxpts[1])
+				pred_generations_tracked = 1
 
 				# create prediction tuple and append the prediction to the
 				# predictions list
-				prediction = (pred_class, pred_conf, pred_boxpts)
+				prediction = (pred_class, pred_conf, pred_boxpts, pred_area, pred_generations_tracked)
 				predictions.append(prediction)
 
 		# return the list of predictions to the calling function
