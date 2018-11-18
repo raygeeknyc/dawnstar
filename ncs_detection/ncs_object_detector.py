@@ -75,6 +75,7 @@ class NCSObjectClassifier(object):
 			(max(pred_1_box[1][0], pred_2_box[1][0]),
 			max(pred_1_box[1][1], pred_2_box[1][1])))
 		overlap_area = NCSObjectClassifier.area(overlap_region[0], overlap_region[1])
+
 		return overlap_area
 
 	@staticmethod
