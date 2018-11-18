@@ -62,6 +62,22 @@ class NCSObjectClassifier(object):
 		self._graph = self.__class__.device.AllocateGraph(graph_in_memory)
 
 	@staticmethod
+	def rank_possible_matches(primary_object_set, secondary_object_set):
+		eligible_matches = dict()
+		for prediction in primary_object_set:
+			primary_class, _, primary_box, _, _ = prediction
+			for potential_match in available_secondaries:
+				secondary_class, _, secondary_box_, _, _ = prediction
+				if secondary_class != primary_class:
+					continue
+				overlapping_area = NCSObjectClassifier.overlap_area(primary_box, secondary_box)
+				if overlapping_area:
+					eligible_matches[(primary, secondary)] = overlap
+		# At this point we have all possible matches and their score
+		# TODO: extract the most likely matches, one for each primary and secondary, by score
+		return eligible_matches
+
+	@staticmethod
 	def area(point1, point2):
 		area = (point2[0] - point1[0]) * (point2[1] - point1[1])
 		return max(0, area)
