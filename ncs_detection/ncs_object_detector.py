@@ -73,9 +73,20 @@ class NCSObjectClassifier(object):
 				overlapping_area = NCSObjectClassifier.overlap_area(primary_box, secondary_box)
 				if overlapping_area:
 					eligible_matches[(primary, secondary)] = overlap
-		# At this point we have all possible matches and their score
-		# TODO: extract the most likely matches, one for each primary and secondary, by score
-		return eligible_matches
+		# At this point we have all possible matches and a score for each
+		matched_primaries = []
+		matched_secondaries = []
+		best_matches = []
+		for key, value in sorted(eligible_matches.iteritems(), key=lambda (k,v): (v,k), reverse=True):
+			proposed_primary, proposed_secondary = key
+			if proposed_primary in matched_primaries:
+				continue
+			if proposed_secondary in matched_secondaries:
+				continue
+			best_matches.append(key)
+			matched_primaries.append(proposed_primary)
+			matched_secondaries.append(proposed_secondary)
+		return best_matches
 
 	@staticmethod
 	def area(point1, point2):
