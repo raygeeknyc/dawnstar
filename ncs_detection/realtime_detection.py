@@ -39,6 +39,7 @@ fps = FPS().start()
 # loop over frames from the video file stream
 classifier = NCSObjectClassifier(args["graph"], args["confidence"])
 while True:
+	object_predictions = []
 	try:
 		# grab the frame from the threaded video stream
 		# make a copy of the frame and resize it for display/video purposes
@@ -46,15 +47,14 @@ while True:
 		image_for_result = frame.copy()
 		image_for_result = cv2.resize(image_for_result, DISPLAY_DIMS)
 
-		# use the NCS to acquire predictions
+		# Acquire predictions for the current frame
+		previous_predictions = object_predictions
 		object_predictions = classifier.get_likely_objects(frame)
 		interesting_object = classifier.get_most_interesting_object(object_predictions)
 
 		if not interesting_object:
 			continue
-		# extract prediction data for readability
-		(pred_class, pred_conf, pred_boxpts) = interesting_object
-
+		(pred_class, pred_conf, pred_boxpts, pred_area, pred_generations_tracked) = interesting_object
 		# print prediction to terminal
 		logging.info("Object: class={}, confidence={}, "
 			"boxpoints={}".format(pred_class, pred_conf,
