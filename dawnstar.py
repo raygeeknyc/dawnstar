@@ -30,7 +30,10 @@ class Dawnstar():
     self._process_event = event
     self.ip_address = None
     self.frames = 0
-    self.trackable_objects = 0
+    self.tracked_objects = 0
+    self.tracked_bounds = ((0,0),(0,0))
+    self.tracked_area = 0
+    self.generations_tracked = 0
     self.objects = 0
     self._screen = Display()
     self._object_queue = object_queue
@@ -67,7 +70,8 @@ class Dawnstar():
         info = DisplayInfo()
         info.ip = self.ip_address
         info.objects = self.objects
-        info.trackable_objects = self.trackable_objects
+        info.tracked_objects = self.tracked_objects
+        info.tracked_bounds = self.tracked_bounds
         info.frames = self.frames
         prev_frames = self.frames
         prev_ip_address = self.ip_address
@@ -85,11 +89,13 @@ class Dawnstar():
       base_image, predictions, interesting_object = frame
       self.objects = len(predictions)
       if interesting_object:
-        self.trackable_objects = 1
+	_, _, self.tracked_bounds, self.tracked_area, self.generations_tracked = interesting_object
+	logging.info("bounds: {}".format(self.tracked_bounds))
+        self.tracked_objects = 1
       else:
-        self.trackable_objects = 0
+        self.tracked_objects = 0
       for (process_image, pred) in enumerate(predictions):
-        (pred_class, pred_confidence, pred_boxpts) = pred
+        pred_class, pred_confidence, _, _, _ = pred
         logging.info("Prediction class={}, confidence={}".format(pred_class, pred_confidence))
     logging.debug("Done consuming objects")
 
