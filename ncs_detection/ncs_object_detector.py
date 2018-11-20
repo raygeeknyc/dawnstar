@@ -126,7 +126,7 @@ class NCSObjectClassifier(object):
 	def get_most_interesting_object(self, predictions):
 		prioritized_objects = {}
 		for object in predictions:
-			_class, _confidence, _bound_box = object
+			_class, _confidence, _bound_box, _, _ = object
 			if _class not in NCSObjectClassifier.INTERESTING_CLASSES.keys():
 				continue
 			if NCSObjectClassifier.INTERESTING_CLASSES[_class] not in prioritized_objects.keys():
@@ -139,7 +139,7 @@ class NCSObjectClassifier(object):
 		highest_priority_objects = prioritized_objects[highest_priority]
 		max_area = 0
 		for important_object in highest_priority_objects:
-			_, _, _, area  = important_object
+			_, _, _, area, _  = important_object
 			if area > max_area:
 				max_area = area
 				largest_object = important_object
@@ -190,7 +190,7 @@ class NCSObjectClassifier(object):
 
 				pred_class = NCSObjectClassifier.CLASSES[int(output[base_index + 1])]
 				pred_boxpts = ((x1, y1), (x2, y2))
-			        pred_area = NCSObjectClassifer.area(pred_boxpts[0], pred_boxpts[1])
+			        pred_area = NCSObjectClassifier.area(pred_boxpts[0], pred_boxpts[1])
 				pred_generations_tracked = 1
 
 				# create prediction tuple and append the prediction to the

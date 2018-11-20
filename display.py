@@ -22,10 +22,10 @@ class DisplayInfo(object):
     self.ip = '###.###.###.###'
     self.right_motor = 0
     self.left_motor = 0
-    self.trackable_objects = 0
+    self.tracked_generations = 0
     self.objects = 0
-    self.tracking_bounds = (1024, 1024)
-    self.tracking_zone = (0, 0)
+    self.tracked_bounds = (0, 0)
+    self.tracked_zone = (0, 0)
     self.frames = 0
 
 class Display(object):
@@ -81,14 +81,14 @@ class Display(object):
 
     y += line_height + 1
     bounds = ""
-    if self._info.trackable_objects:
-        bounds = self._info.tracking_bounds
-    draw.text((x, y), 'Track: {}'.format(bounds), font=font, fill=255)
-    logging.debug('Track:{}'.format(self._info.tracking_bounds))
+    if self._info.tracked_generations:
+        bounds = self._info.tracked_bounds
+    draw.text((x, y), str(bounds), font=font, fill=255)
+    logging.debug('Track:{}'.format(self._info.tracked_bounds))
 
     y += line_height + 1
-    draw.text((x, y), '  Zone:{}'.format(self._info.tracking_zone), font=font, fill=255)
-    logging.debug('Zone:{}'.format(self._info.tracking_zone))
+    draw.text((x, y), 'Age: {} Zone:{}'.format(self._info.tracked_generations, self._info.tracked_zone), font=font, fill=255)
+    logging.debug('Zone:{}'.format(self._info.tracked_zone))
 
     left_motor_state = 0
     right_motor_state = 0
