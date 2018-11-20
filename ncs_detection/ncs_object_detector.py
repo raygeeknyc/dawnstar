@@ -106,6 +106,13 @@ class NCSObjectClassifier(object):
 		return overlap_area
 
 	@staticmethod
+	def area_ratio(prediction_1, prediction_2):
+		_, _, _, pred_1_area, _ = prediction_1
+		_, _, _, pred_2_area, _ = prediction_2
+		relative_size = max(pred_area_1, pred_area_2) / min(pred_area_1, pred_area_2)
+		return relative_size
+
+	@staticmethod
 	def preprocess_image(input_image):
 		# preprocess the image
 		preprocessed = cv2.resize(input_image, NCSObjectClassifier.PREPROCESS_DIMS)
