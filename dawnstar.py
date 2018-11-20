@@ -80,6 +80,7 @@ class Dawnstar():
 
   def _process_objects(self):
     logging.debug("object consumer started")
+    predictions = []
     while not self._process_event.is_set():
       try:
         frame = self._object_queue.get(False)
@@ -87,6 +88,7 @@ class Dawnstar():
         continue 
       self.frames += 1
       logging.info("Frame[{}] received".format(self.frames))
+      previous_predictions = predictions
       base_image, predictions, interesting_object = frame
       self.objects = len(predictions)
       if interesting_object:
