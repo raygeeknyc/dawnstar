@@ -33,7 +33,7 @@ class Dawnstar():
     self.tracked_objects = 0
     self.tracked_bounds = ((0,0),(0,0))
     self.tracked_area = 0
-    self.generations_tracked = 0
+    self.tracked_generations = 0
     self.objects = 0
     self._screen = Display()
     self._object_queue = object_queue
@@ -71,6 +71,7 @@ class Dawnstar():
         info.ip = self.ip_address
         info.objects = self.objects
         info.tracked_objects = self.tracked_objects
+        info.tracked_generations = self.tracked_generations
         info.tracked_bounds = self.tracked_bounds
         info.frames = self.frames
         prev_frames = self.frames
@@ -89,7 +90,7 @@ class Dawnstar():
       base_image, predictions, interesting_object = frame
       self.objects = len(predictions)
       if interesting_object:
-	_, _, self.tracked_bounds, self.tracked_area, self.generations_tracked = interesting_object
+	_, _, self.tracked_bounds, self.tracked_area, self.tracked_generations = interesting_object
 	logging.info("bounds: {}".format(self.tracked_bounds))
         self.tracked_objects = 1
       else:
