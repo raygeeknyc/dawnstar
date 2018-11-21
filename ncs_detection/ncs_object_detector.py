@@ -89,6 +89,11 @@ class NCSObjectClassifier(object):
 		return best_matches
 
 	@staticmethod
+	def apply_tracked_continuity(matched_predictions):
+		for primary, secondary in matched_predictions:
+			primary[4] += secondary[4]
+
+	@staticmethod
 	def area(point1, point2):
 		area = (point2[0] - point1[0]) * (point2[1] - point1[1])
 		return max(0, area)
