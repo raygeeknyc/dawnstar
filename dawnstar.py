@@ -34,7 +34,7 @@ class Dawnstar():
     self.tracked_bounds = ((0,0),(0,0))
     self.tracked_area = 0
     self.tracked_generations = 0
-    self.objects = 0
+    self.object_count = 0
     self._screen = Display()
     self._object_queue = object_queue
     print('Ip address: {}'.format(self._get_ip_address()))
@@ -69,7 +69,7 @@ class Dawnstar():
       if self.ip_address != prev_ip_address or self.frames != prev_frames:
         info = DisplayInfo()
         info.ip = self.ip_address
-        info.objects = self.objects
+        info.object_count = self.object_count
         info.tracked_objects = self.tracked_objects
         info.tracked_generations = self.tracked_generations
         info.tracked_bounds = self.tracked_bounds
@@ -90,7 +90,8 @@ class Dawnstar():
       logging.info("Frame[{}] received".format(self.frames))
       previous_predictions = predictions
       base_image, predictions, interesting_object = frame
-      self.objects = len(predictions)
+      self.object_count = len(predictions)
+      NCSObjectDetector.apply_tracked_continuity(NCSObjectDetector.rank_possible_matches(predictions, previous_predictions))
       if interesting_object:
 	_, _, self.tracked_bounds, self.tracked_area, self.tracked_generations = interesting_object
 	logging.info("bounds: {}".format(self.tracked_bounds))
@@ -98,8 +99,8 @@ class Dawnstar():
       else:
         self.tracked_objects = 0
       for (process_image, pred) in enumerate(predictions):
-        pred_class, pred_confidence, _, _, _ = pred
-        logging.info("Prediction class={}, confidence={}".format(pred_class, pred_confidence))
+        pred_class, pred_confidence, _, _, tracked_generations = pred
+        logging.info("Prediction class={}, confidence={}, age={}".format(pred_class, pred_confidence, tracked_generations))
     logging.debug("Done consuming objects")
 
 def main():

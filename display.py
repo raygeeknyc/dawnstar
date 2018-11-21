@@ -23,7 +23,7 @@ class DisplayInfo(object):
     self.right_motor = 0
     self.left_motor = 0
     self.tracked_generations = 0
-    self.objects = 0
+    self.object_count = 0
     self.tracked_bounds = (0, 0)
     self.tracked_zone = (0, 0)
     self.frames = 0
@@ -76,8 +76,8 @@ class Display(object):
     logging.debug('IP:{}'.format(str(self._info.ip)))
 
     y += line_height + 1
-    draw.text((x, y), 'Frame:{} Objs:{}'.format(self._info.frames, self._info.objects), font=font, fill=255)
-    logging.debug('Frame: {}, Objects:{}'.format(self._info.frames, self._info.objects))
+    draw.text((x, y), 'Frame:{} Objs:{}'.format(self._info.frames, self._info.object_count), font=font, fill=255)
+    logging.debug('Frame: {}, Objects:{}'.format(self._info.frames, self._info.object_count))
 
     y += line_height + 1
     bounds = ""
