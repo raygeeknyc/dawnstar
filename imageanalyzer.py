@@ -40,10 +40,27 @@ class ImageAnalyzer(multiprocessing.Process):
 	self._previous_predictions = []
 	self._classifier = NCSObjectClassifier(GRAPH_FILENAME, MININUM_CONSIDERED_CONFIDENCE)
 
+    def _prediction_by_key(self, predictions, prediction_key):
+        for prediction in predictions:
+            if prediction[0] == prediction_key:
+                return prediction
+        return None
+
+    def _apply_matches(self, persistent_object_keys, predictions, previous_predictions):
+        for (prediction_key, previous_prediction_key) in persistent_object_keys:
+            previous_object = self._prediction_by_key(previous_predictions, previous_prediction_key)
+            if not previous_object:
+                raise ValueError("Missing previous prediction")
+            current_object = self._prediction_by_key(predictions, current_prediction_key)
+            if not current_object:
+                raise ValueError("Missing current prediction")
+            current_object[3] += previous_object[3]
+
     def _process_image(self, image, frame_number):
         logging.debug("Processing image {}".format(frame_number))
 	predictions = self._classifier.get_likely_objects(image)
 	persistent_object_keys = self._classifier.rank_possible_matches(predictions, self._previous_predictions)
+	self._apply_matches(persistent_object_keys, predictions, self._previous_predictions)
 	logging.info("Objects: {}, previous: {}, matches: {}".format(len(predictions), len(self._previous_predictions), len(persistent_object_keys)))
 	interesting_object = self._classifier.get_most_interesting_object(predictions)
        	if not self._exit.is_set():
