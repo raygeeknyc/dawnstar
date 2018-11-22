@@ -65,25 +65,27 @@ class NCSObjectClassifier(object):
 	def rank_possible_matches(primary_object_set, secondary_object_set):
 		eligible_matches = dict()
 		for prediction in primary_object_set:
-			primary_class, _, primary_box, _, _ = prediction
+			key_primary, _, _, _ = prediction
+			(primary_class, primary_box) = key_primary
 			for potential_match in available_secondaries:
-				secondary_class, _, secondary_box_, _, _ = prediction
+				key_secondary, _, _, _ = prediction
+				(secondary_class, secondary_box) = key_secondary
 				if secondary_class != primary_class:
 					continue
 				overlapping_area = NCSObjectClassifier.overlap_area(primary_box, secondary_box)
 				if overlapping_area:
-					eligible_matches[(primary, secondary)] = overlap
+					eligible_matches[(key_primary, key_secondary)] = overlap
 		# At this point we have all possible matches and a score for each
 		matched_primaries = []
 		matched_secondaries = []
 		best_matches = []
-		for key, value in sorted(eligible_matches.iteritems(), key=lambda (k,v): (v,k), reverse=True):
-			proposed_primary, proposed_secondary = key
+		for match_key, rank in sorted(eligible_matches.iteritems(), key=lambda (k,v): (v,k), reverse=True):
+			proposed_primary, proposed_secondary = match_key
 			if proposed_primary in matched_primaries:
 				continue
 			if proposed_secondary in matched_secondaries:
 				continue
-			best_matches.append(key)
+			best_matches.append(match_key)
 			matched_primaries.append(proposed_primary)
 			matched_secondaries.append(proposed_secondary)
 		return best_matches
