@@ -91,7 +91,6 @@ class Dawnstar():
       previous_predictions = predictions
       base_image, predictions, interesting_object = frame
       self.object_count = len(predictions)
-      NCSObjectDetector.apply_tracked_continuity(NCSObjectDetector.rank_possible_matches(predictions, previous_predictions))
       if interesting_object:
 	_, _, self.tracked_bounds, self.tracked_area, self.tracked_generations = interesting_object
 	logging.info("bounds: {}".format(self.tracked_bounds))
