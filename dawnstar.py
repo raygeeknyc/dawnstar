@@ -92,13 +92,13 @@ class Dawnstar():
       base_image, predictions, interesting_object = frame
       self.object_count = len(predictions)
       if interesting_object:
-	_, _, self.tracked_bounds, self.tracked_area, self.tracked_generations = interesting_object
+	(_, self.tracked_bounds), _, self.tracked_area, self.tracked_generations = interesting_object
 	logging.info("bounds: {}".format(self.tracked_bounds))
         self.tracked_objects = 1
       else:
         self.tracked_objects = 0
       for (process_image, pred) in enumerate(predictions):
-        pred_class, pred_confidence, _, _, tracked_generations = pred
+        (pred_class, _), pred_confidence, _, tracked_generations = pred
         logging.info("Prediction class={}, confidence={}, age={}".format(pred_class, pred_confidence, tracked_generations))
     logging.debug("Done consuming objects")
 
