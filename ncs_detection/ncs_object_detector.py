@@ -68,7 +68,7 @@ class NCSObjectClassifier(object):
 			key_primary, _, _, _ = prediction
 			(primary_class, primary_box) = key_primary
 			for potential_match in secondary_object_set:
-				key_secondary, _, _, _ = prediction
+				key_secondary, _, _, _ = potential_match
 				(secondary_class, secondary_box) = key_secondary
 				if secondary_class != primary_class:
 					continue
