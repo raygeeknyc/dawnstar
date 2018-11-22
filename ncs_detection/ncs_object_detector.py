@@ -67,14 +67,14 @@ class NCSObjectClassifier(object):
 		for prediction in primary_object_set:
 			key_primary, _, _, _ = prediction
 			(primary_class, primary_box) = key_primary
-			for potential_match in available_secondaries:
+			for potential_match in secondary_object_set:
 				key_secondary, _, _, _ = prediction
 				(secondary_class, secondary_box) = key_secondary
 				if secondary_class != primary_class:
 					continue
-				overlapping_area = NCSObjectClassifier.overlap_area(primary_box, secondary_box)
+				overlapping_area = NCSObjectClassifier.overlap_area(prediction, potential_match)
 				if overlapping_area:
-					eligible_matches[(key_primary, key_secondary)] = overlap
+					eligible_matches[(key_primary, key_secondary)] = overlapping_area
 		# At this point we have all possible matches and a score for each
 		matched_primaries = []
 		matched_secondaries = []
@@ -102,8 +102,8 @@ class NCSObjectClassifier(object):
 
 	@staticmethod
 	def overlap_area(prediction_1, prediction_2):
-		_, _, pred_1_box, _, _ = prediction_1
-		_, _, pred_2_box, _, _ = prediction_2
+		(_, pred_1_box), _, _, _ = prediction_1
+		(_, pred_2_box), _, _, _ = prediction_2
 		overlap_region = ((max(pred_1_box[0][0], pred_2_box[0][0]),
 			max(pred_1_box[0][1], pred_2_box[0][1])),
 			(max(pred_1_box[1][0], pred_2_box[1][0]),
