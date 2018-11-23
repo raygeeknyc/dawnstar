@@ -8,6 +8,10 @@ logging.getLogger().setLevel(logging.DEBUG)
 class NCSObjectClassifier(object):
 	# frame dimensions should be square
 	PREPROCESS_DIMS = (300, 300)
+	Y_ZONES = 4
+	X_ZONES = 6
+	_X_ZONE_SIZE = PREPROCESS_DIMS[0] / X_ZONES
+	_Y_ZONE_SIZE = PREPROCESS_DIMS[1] / Y_ZONES
 
         device = None
 
@@ -94,6 +98,38 @@ class NCSObjectClassifier(object):
 	def apply_tracked_continuity(matched_predictions):
 		for primary, secondary in matched_predictions:
 			primary[4] += secondary[4]
+
+	@staticmethod
+	def correction_for_zone(object, bounds=NCSObjectClassifier.PREPROCESS_DIMS):
+		zone = zone(object, bounds)
+		if zone[0] > NCSObjectDetector.X_ZONES:
+			raise ValueError("Bad X zone calculation")
+		if zone[1] > NCSObjectDetector.Y_ZONES:
+			raise ValueError("Bad Y zone calculation")
+		x = -9999
+		if zone[0] == 1: x = -2
+		elif zone[0] == 2: x = -1
+		elif zone[0] in (3,4): x = 0
+		elif zone[0] == 5: x = 1
+		elif zone[0] == 6: x = 2
+
+		y = -9999
+		if zone[1] == 1: y = -1
+		elif zone[1] in (2,3): y = 0
+		elif zone[1] == 4: y = 1
+
+		return (x, y)
+
+	@staticmethod
+	def zone(object, bounds):
+		center = NCSObjectDetector.center(object)
+		x_zone = (center[0] / NCSObjectDetector._X_ZONE_SIZE) + (1 if center[0] % NCSObjectDetector._X_ZONE_SIZE else 0)
+		y_zone = (center[1] / NCSObjectDetector._Y_ZONE_SIZE) + (1 if center[1] % NCSObjectDetector._Y_ZONE_SIZE else 0)
+		return (x_zone, y_zone)
+
+	@staticmethod
+	def center(point1, point2):
+		return ((point2[0] + point1[0]) /2, (point2[1] + point1[1]) / 2)
 
 	@staticmethod
 	def area(point1, point2):

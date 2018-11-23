@@ -23,6 +23,7 @@ class DisplayInfo(object):
     self.right_motor = 0
     self.left_motor = 0
     self.tracked_generations = 0
+    self.corrections = None
     self.object_count = 0
     self.tracked_bounds = (0, 0)
     self.tracked_zone = (0, 0)
