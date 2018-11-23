@@ -100,11 +100,11 @@ class NCSObjectClassifier(object):
 			primary[4] += secondary[4]
 
 	@staticmethod
-	def correction_for_zone(object, bounds=NCSObjectClassifier.PREPROCESS_DIMS):
-		zone = zone(object, bounds)
-		if zone[0] > NCSObjectDetector.X_ZONES:
+	def correction_for_zone(object):
+		zone = NCSObjectClassifier.zone_for_object(object)
+		if zone[0] > NCSObjectClassifier.X_ZONES:
 			raise ValueError("Bad X zone calculation")
-		if zone[1] > NCSObjectDetector.Y_ZONES:
+		if zone[1] > NCSObjectClassifier.Y_ZONES:
 			raise ValueError("Bad Y zone calculation")
 		x = -9999
 		if zone[0] == 1: x = -2
@@ -121,19 +121,20 @@ class NCSObjectClassifier(object):
 		return (x, y)
 
 	@staticmethod
-	def zone(object, bounds):
-		center = NCSObjectDetector.center(object)
-		x_zone = (center[0] / NCSObjectDetector._X_ZONE_SIZE) + (1 if center[0] % NCSObjectDetector._X_ZONE_SIZE else 0)
-		y_zone = (center[1] / NCSObjectDetector._Y_ZONE_SIZE) + (1 if center[1] % NCSObjectDetector._Y_ZONE_SIZE else 0)
+	def zone_for_object(object):
+		center = NCSObjectClassifier.center(object[0][1])
+		x_zone = (center[0] / NCSObjectClassifier._X_ZONE_SIZE) + (1 if center[0] % NCSObjectClassifier._X_ZONE_SIZE else 0)
+		y_zone = (center[1] / NCSObjectClassifier._Y_ZONE_SIZE) + (1 if center[1] % NCSObjectClassifier._Y_ZONE_SIZE else 0)
 		return (x_zone, y_zone)
 
 	@staticmethod
-	def center(point1, point2):
+	def center(box):
+		point1, point2 = box
 		return ((point2[0] + point1[0]) /2, (point2[1] + point1[1]) / 2)
 
 	@staticmethod
-	def area(point1, point2):
-		area = (point2[0] - point1[0]) * (point2[1] - point1[1])
+	def area(box1, box2):
+		area = (box2[0] - box1[0]) * (box2[1] - box1[1])
 		return max(0, area)
 
 	@staticmethod

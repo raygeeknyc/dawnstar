@@ -23,7 +23,7 @@ STOP = None
 
 from display import DisplayInfo, Display
 import imagecapture
-import imageanalyzer
+from imageanalyzer import ImageAnalyzer
 
 class Dawnstar():
   def __init__(self, event, object_queue):
@@ -126,7 +126,7 @@ def main():
     object_queue = multiprocessing.Queue()
     robot = Dawnstar(process_event, object_queue)
 
-    image_analyzer = imageanalyzer.ImageAnalyzer(process_event, image_queue, object_queue, log_queue, logging.getLogger("").getEffectiveLevel())
+    image_analyzer = ImageAnalyzer(process_event, image_queue, object_queue, log_queue, logging.getLogger("").getEffectiveLevel())
     logging.info("Starting image analyzer")
     image_analyzer.start()
 
