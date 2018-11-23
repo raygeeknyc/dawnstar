@@ -35,7 +35,8 @@ class Dawnstar():
     self.tracked_area = 0
     self.tracked_generations = 0
     self.object_count = 0
-    self.corrections = None
+    self.tracked_zone = (0, 0)
+    self.corrections_to_zone = None
     self._screen = Display()
     self._object_queue = object_queue
     print('Ip address: {}'.format(self._get_ip_address()))
@@ -74,8 +75,9 @@ class Dawnstar():
         info.tracked_objects = self.tracked_objects
         info.tracked_generations = self.tracked_generations
         info.tracked_bounds = self.tracked_bounds
+        info.tracked_zone = self.tracked_zone
         info.frames = self.frames
-        info.corrections = self.corrections
+        info.corrections_to_zone = self.corrections_to_zone
         prev_frames = self.frames
         prev_ip_address = self.ip_address
         self._screen.refresh(info)
@@ -97,10 +99,12 @@ class Dawnstar():
 	(_, self.tracked_bounds), _, self.tracked_area, self.tracked_generations = interesting_object
 	logging.info("bounds: {}".format(self.tracked_bounds))
         self.tracked_objects = 1
-	self.corrections = ImageAnalyzer.corrections_to_center(interesting_object)
+	self.tracked_zone = ImageAnalyzer.object_zone_in_image(interesting_object)
+	self.corrections_to_zone = ImageAnalyzer.zone_corrections_to_center(self.tracked_zone)
       else:
         self.tracked_objects = 0
-	self.corrections = None
+	self.tracked_zone = None
+	self.corrections_to_zone = None
       for (process_image, pred) in enumerate(predictions):
         (pred_class, _), pred_confidence, _, tracked_generations = pred
         logging.info("Prediction class={}, confidence={}, age={}".format(pred_class, pred_confidence, tracked_generations))

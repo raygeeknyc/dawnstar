@@ -100,8 +100,7 @@ class NCSObjectClassifier(object):
 			primary[4] += secondary[4]
 
 	@staticmethod
-	def correction_for_zone(object):
-		zone = NCSObjectClassifier.zone_for_object(object)
+	def correction_for_zone(zone):
 		if zone[0] > NCSObjectClassifier.X_ZONES:
 			raise ValueError("Bad X zone calculation")
 		if zone[1] > NCSObjectClassifier.Y_ZONES:
@@ -125,6 +124,7 @@ class NCSObjectClassifier(object):
 		center = NCSObjectClassifier.center(object[0][1])
 		x_zone = (center[0] / NCSObjectClassifier._X_ZONE_SIZE) + (1 if center[0] % NCSObjectClassifier._X_ZONE_SIZE else 0)
 		y_zone = (center[1] / NCSObjectClassifier._Y_ZONE_SIZE) + (1 if center[1] % NCSObjectClassifier._Y_ZONE_SIZE else 0)
+		logging.info("Box: {} Zone: {}, {}".format(object[0], x_zone, y_zone))
 		return (x_zone, y_zone)
 
 	@staticmethod
