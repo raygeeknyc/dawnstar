@@ -113,10 +113,15 @@ class NCSObjectClassifier(object):
 
 	@staticmethod
 	def weight_of_zone_for_segment(start, end, zone, zone_length):
-		if (zone+1)*zone_length < end: return 0
-		elif zone*zone_length > start: return 0
-		else: return (zone_length / (min((zone+1)*zone_length, end)
-			- min(zone*zone_length, start)))
+		if (zone+1)*zone_length < start: return 0
+		elif zone*zone_length > end: return 0
+		if zone == 0: zone_weight = -2.0
+		elif zone == NCSObjectClassifier.X_ZONES-1: zone_weight = 2.0
+		elif zone == (NCSObjectClassifier.X_ZONES-1)/2: zone_weight = 0.0
+		elif zone == NCSObjectClassifier.X_ZONES/2: zone_weight = 0.0
+		elif zone < (NCSObjectClassifier.X_ZONES-1)/2: zone_weight = -1.0
+		elif zone > NCSObjectClassifier.X_ZONES/2: zone_weight = 1.0
+		return (zone_weight * (min((zone+1)*zone_length, end) - max(zone*zone_length, start)) / zone_length)
 
 	@staticmethod
 	def correction_for_zone(zone):
