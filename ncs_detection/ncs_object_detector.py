@@ -106,22 +106,23 @@ class NCSObjectClassifier(object):
 		x_correction = 0
 		y_correction = 0
 		for zone in range(0, NCSObjectClassifier.X_ZONES):
-			x_correction += NCSObjectClassifier.weight_of_zone_for_segment(x0, x1, zone, NCSObjectClassifier._X_ZONE_SIZE)
+			x_correction += weight_of_zone_for_segment(x0, x1, zone, NCSObjectClassifier.X_ZONES, NCSObjectClassifier._X_ZONE_SIZE)
 		for zone in range(0, NCSObjectClassifier.Y_ZONES):
-			y_correction += NCSObjectClassifier.weight_of_zone_for_segment(y0, y1, zone, NCSObjectClassifier._Y_ZONE_SIZE)
+			y_correction += weight_of_zone_for_segment(y0, y1, zone, NCSObjectClassifier.Y_ZONES, NCSObjectClassifier._Y_ZONE_SIZE)
 		return (x_correction, y_correction)
 
 	@staticmethod
-	def weight_of_zone_for_segment(start, end, zone, zone_length):
+	def weight_of_zone_for_segment(start, end, zone, zones, zone_length):
 		if (zone+1)*zone_length < start: return 0
 		elif zone*zone_length > end: return 0
-		if zone == 0: zone_weight = -2.0
-		elif zone == NCSObjectClassifier.X_ZONES-1: zone_weight = 2.0
-		elif zone == (NCSObjectClassifier.X_ZONES-1)/2: zone_weight = 0.0
-		elif zone == NCSObjectClassifier.X_ZONES/2: zone_weight = 0.0
-		elif zone < (NCSObjectClassifier.X_ZONES-1)/2: zone_weight = -1.0
-		elif zone > NCSObjectClassifier.X_ZONES/2: zone_weight = 1.0
-		return (zone_weight * (min((zone+1)*zone_length, end) - max(zone*zone_length, start)) / zone_length)
+		if zone == 0: zone_weight = 2.0
+		elif zone == zones-1: zone_weight = -2.0
+		elif zone == (zones-1)/2: zone_weight = 0.0
+		elif zone == zones/2: zone_weight = 0.0
+		elif zone < (zones-1)/2: zone_weight = 1.0
+		elif zone > zones/2: zone_weight = -1.0
+		segment_in_zone = (min(end, (zone+1)*zone_length)-max(start, zone*zone_length))
+		return zone_weight * ((1.0 * segment_in_zone) / (end - start))
 
 	@staticmethod
 	def correction_for_zone(zone):
