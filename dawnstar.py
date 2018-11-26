@@ -99,8 +99,8 @@ class Dawnstar():
 	(_, self.tracked_bounds), _, self.tracked_area, self.tracked_generations = interesting_object
 	logging.info("bounds: {}".format(self.tracked_bounds))
         self.tracked_objects = 1
-	self.tracked_zone = ImageAnalyzer.object_zone_in_image(interesting_object)
-	self.corrections_to_zone = ImageAnalyzer.zone_corrections_to_center(self.tracked_zone)
+	self.tracked_zone = ImageAnalyzer.object_center_zone(interesting_object)
+	self.corrections_to_zone = ImageAnalyzer.object_corrections_to_center(interesting_object)
       else:
         self.tracked_objects = 0
 	self.tracked_zone = None

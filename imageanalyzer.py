@@ -47,12 +47,12 @@ class ImageAnalyzer(multiprocessing.Process):
         return None
 
     @staticmethod
-    def object_zone_in_image(object):
+    def object_center_zone(object):
         return NCSObjectClassifier.zone_for_object(object)
 
     @staticmethod
-    def zone_corrections_to_center(zone):
-        return NCSObjectClassifier.correction_for_zone(zone)
+    def object_corrections_to_center(object):
+        return NCSObjectClassifier.correction_for_object(object)
 
     def _apply_matches(self, persistent_object_keys, predictions, previous_predictions):
         logging.info("previous_predictions : {}".format(previous_predictions))

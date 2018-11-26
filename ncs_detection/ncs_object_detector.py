@@ -100,6 +100,25 @@ class NCSObjectClassifier(object):
 			primary[4] += secondary[4]
 
 	@staticmethod
+	def correction_for_object(object):
+		(_, box), _, _, _ = object
+		(x0, y0),(x1, y1) = box
+		x_correction = 0
+		y_correction = 0
+		for zone in range(0, NCSObjectClassifier.X_ZONES):
+			x_correction += NCSObjectClassifier.weight_of_zone_for_segment(x0, x1, zone, NCSObjectClassifier._X_ZONE_SIZE)
+		for zone in range(0, NCSObjectClassifier.Y_ZONES):
+			y_correction += NCSObjectClassifier.weight_of_zone_for_segment(y0, y1, zone, NCSObjectClassifier._Y_ZONE_SIZE)
+		return (x_correction, y_correction)
+
+	@staticmethod
+	def weight_of_zone_for_segment(start, end, zone, zone_length):
+		if (zone+1)*zone_length < end: return 0
+		elif zone*zone_length > start: return 0
+		else: return (zone_length / (min((zone+1)*zone_length, end)
+			- min(zone*zone_length, start)))
+
+	@staticmethod
 	def correction_for_zone(zone):
 		if zone[0] > NCSObjectClassifier.X_ZONES:
 			raise ValueError("Bad X zone calculation")
