@@ -106,9 +106,9 @@ class NCSObjectClassifier(object):
 		x_correction = 0
 		y_correction = 0
 		for zone in range(0, NCSObjectClassifier.X_ZONES):
-			x_correction += weight_of_zone_for_segment(x0, x1, zone, NCSObjectClassifier.X_ZONES, NCSObjectClassifier._X_ZONE_SIZE)
+			x_correction += round(NCSObjectClassifier.weight_of_zone_for_segment(x0, x1, zone, NCSObjectClassifier.X_ZONES, NCSObjectClassifier._X_ZONE_SIZE), 2)
 		for zone in range(0, NCSObjectClassifier.Y_ZONES):
-			y_correction += weight_of_zone_for_segment(y0, y1, zone, NCSObjectClassifier.Y_ZONES, NCSObjectClassifier._Y_ZONE_SIZE)
+			y_correction += round(NCSObjectClassifier.weight_of_zone_for_segment(y0, y1, zone, NCSObjectClassifier.Y_ZONES, NCSObjectClassifier._Y_ZONE_SIZE), 2)
 		return (x_correction, y_correction)
 
 	@staticmethod
