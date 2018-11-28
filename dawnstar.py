@@ -23,7 +23,7 @@ STOP = None
 
 from display import DisplayInfo, Display
 import imagecapture
-import imageanalyzer
+from imageanalyzer import ImageAnalyzer
 
 class Dawnstar():
   def __init__(self, event, object_queue):
@@ -35,6 +35,8 @@ class Dawnstar():
     self.tracked_area = 0
     self.tracked_generations = 0
     self.object_count = 0
+    self.tracked_zone = (0, 0)
+    self.corrections_to_zone = None
     self._screen = Display()
     self._object_queue = object_queue
     print('Ip address: {}'.format(self._get_ip_address()))
@@ -73,7 +75,9 @@ class Dawnstar():
         info.tracked_objects = self.tracked_objects
         info.tracked_generations = self.tracked_generations
         info.tracked_bounds = self.tracked_bounds
+        info.tracked_zone = self.tracked_zone
         info.frames = self.frames
+        info.corrections_to_zone = "({:0.1f},{:0.1f})".format(self.corrections_to_zone[0], self.corrections_to_zone[0]) if self.corrections_to_zone else "none"
         prev_frames = self.frames
         prev_ip_address = self.ip_address
         self._screen.refresh(info)
@@ -91,15 +95,18 @@ class Dawnstar():
       previous_predictions = predictions
       base_image, predictions, interesting_object = frame
       self.object_count = len(predictions)
-      NCSObjectDetector.apply_tracked_continuity(NCSObjectDetector.rank_possible_matches(predictions, previous_predictions))
       if interesting_object:
-	_, _, self.tracked_bounds, self.tracked_area, self.tracked_generations = interesting_object
+	(_, self.tracked_bounds), _, self.tracked_area, self.tracked_generations = interesting_object
 	logging.info("bounds: {}".format(self.tracked_bounds))
         self.tracked_objects = 1
+	self.tracked_zone = ImageAnalyzer.object_center_zone(interesting_object)
+	self.corrections_to_zone = ImageAnalyzer.object_corrections_to_center(interesting_object)
       else:
         self.tracked_objects = 0
+	self.tracked_zone = None
+	self.corrections_to_zone = None
       for (process_image, pred) in enumerate(predictions):
-        pred_class, pred_confidence, _, _, tracked_generations = pred
+        (pred_class, _), pred_confidence, _, tracked_generations = pred
         logging.info("Prediction class={}, confidence={}, age={}".format(pred_class, pred_confidence, tracked_generations))
     logging.debug("Done consuming objects")
 
@@ -123,7 +130,7 @@ def main():
     object_queue = multiprocessing.Queue()
     robot = Dawnstar(process_event, object_queue)
 
-    image_analyzer = imageanalyzer.ImageAnalyzer(process_event, image_queue, object_queue, log_queue, logging.getLogger("").getEffectiveLevel())
+    image_analyzer = ImageAnalyzer(process_event, image_queue, object_queue, log_queue, logging.getLogger("").getEffectiveLevel())
     logging.info("Starting image analyzer")
     image_analyzer.start()
 

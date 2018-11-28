@@ -23,6 +23,7 @@ class DisplayInfo(object):
     self.right_motor = 0
     self.left_motor = 0
     self.tracked_generations = 0
+    self.corrections_to_zone = None
     self.object_count = 0
     self.tracked_bounds = (0, 0)
     self.tracked_zone = (0, 0)
@@ -94,7 +95,8 @@ class Display(object):
     right_motor_state = 0
 
     y += line_height + 1
-    draw.text((x, y), 'Left:{} Right:{}'.format(self._info.left_motor, self._info.right_motor), font=font, fill=255)
+    draw.text((x, y), 'Centering: {}'.format(self._info.corrections_to_zone), font=font, fill=255)
+    logging.debug('Centering: {}'.format(self._info.corrections_to_zone))
     logging.debug('Left:{} Right:{}'.format(self._info.left_motor, self._info.right_motor))
 
     self._screen.image(image)

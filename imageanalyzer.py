@@ -37,15 +37,50 @@ class ImageAnalyzer(multiprocessing.Process):
         self._image_queue = image_queue
         self._object_queue = object_queue
         self._image_queue = image_queue
+	self._previous_predictions = []
 	self._classifier = NCSObjectClassifier(GRAPH_FILENAME, MININUM_CONSIDERED_CONFIDENCE)
+
+    def _prediction_by_key(self, predictions, prediction_key):
+        for prediction in predictions:
+            if prediction[0] == prediction_key:
+                return prediction
+        return None
+
+    @staticmethod
+    def object_center_zone(object):
+        return NCSObjectClassifier.zone_for_object(object)
+
+    @staticmethod
+    def object_corrections_to_center(object):
+        return NCSObjectClassifier.correction_for_object(object)
+
+    def _apply_matches(self, persistent_object_keys, predictions, previous_predictions):
+        logging.info("previous_predictions : {}".format(previous_predictions))
+        for (current_prediction_key, previous_prediction_key) in persistent_object_keys:
+            logging.info("prev key: {}".format(previous_prediction_key))
+            previous_object = self._prediction_by_key(previous_predictions, previous_prediction_key)
+            if not previous_object:
+                raise ValueError("Missing previous prediction")
+            current_object = self._prediction_by_key(predictions, current_prediction_key)
+            if not current_object:
+                raise ValueError("Missing current prediction")
+            current_object[3] += previous_object[3]
 
     def _process_image(self, image, frame_number):
         logging.debug("Processing image {}".format(frame_number))
 	predictions = self._classifier.get_likely_objects(image)
+        logging.info("predictions : {}".format(predictions))
+        logging.info("_previous_predictions : {}".format(self._previous_predictions))
+	persistent_object_keys = self._classifier.rank_possible_matches(predictions, self._previous_predictions)
+        logging.info("Matches: {}".format(persistent_object_keys))
+        logging.info("_previous_predictions : {}".format(self._previous_predictions))
+	self._apply_matches(persistent_object_keys, predictions, self._previous_predictions)
+	logging.info("Objects: {}, previous: {}, matches: {}".format(len(predictions), len(self._previous_predictions), len(persistent_object_keys)))
 	interesting_object = self._classifier.get_most_interesting_object(predictions)
        	if not self._exit.is_set():
         	logging.debug("Queuing processed image {}".format(frame_number))
         	self._object_queue.put((image, predictions, interesting_object))
+		self._previous_predictions = predictions
 
     def _get_images(self):
         logging.debug("image consumer started")

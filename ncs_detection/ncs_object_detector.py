@@ -8,6 +8,10 @@ logging.getLogger().setLevel(logging.DEBUG)
 class NCSObjectClassifier(object):
 	# frame dimensions should be square
 	PREPROCESS_DIMS = (300, 300)
+	Y_ZONES = 4
+	X_ZONES = 6
+	_X_ZONE_SIZE = PREPROCESS_DIMS[0] / X_ZONES
+	_Y_ZONE_SIZE = PREPROCESS_DIMS[1] / Y_ZONES
 
         device = None
 
@@ -65,25 +69,27 @@ class NCSObjectClassifier(object):
 	def rank_possible_matches(primary_object_set, secondary_object_set):
 		eligible_matches = dict()
 		for prediction in primary_object_set:
-			primary_class, _, primary_box, _, _ = prediction
-			for potential_match in available_secondaries:
-				secondary_class, _, secondary_box_, _, _ = prediction
+			key_primary, _, _, _ = prediction
+			(primary_class, primary_box) = key_primary
+			for potential_match in secondary_object_set:
+				key_secondary, _, _, _ = potential_match
+				(secondary_class, secondary_box) = key_secondary
 				if secondary_class != primary_class:
 					continue
-				overlapping_area = NCSObjectClassifier.overlap_area(primary_box, secondary_box)
+				overlapping_area = NCSObjectClassifier.overlap_area(prediction, potential_match)
 				if overlapping_area:
-					eligible_matches[(primary, secondary)] = overlap
+					eligible_matches[(key_primary, key_secondary)] = overlapping_area
 		# At this point we have all possible matches and a score for each
 		matched_primaries = []
 		matched_secondaries = []
 		best_matches = []
-		for key, value in sorted(eligible_matches.iteritems(), key=lambda (k,v): (v,k), reverse=True):
-			proposed_primary, proposed_secondary = key
+		for match_key, rank in sorted(eligible_matches.iteritems(), key=lambda (k,v): (v,k), reverse=True):
+			proposed_primary, proposed_secondary = match_key
 			if proposed_primary in matched_primaries:
 				continue
 			if proposed_secondary in matched_secondaries:
 				continue
-			best_matches.append(key)
+			best_matches.append(match_key)
 			matched_primaries.append(proposed_primary)
 			matched_secondaries.append(proposed_secondary)
 		return best_matches
@@ -94,14 +100,72 @@ class NCSObjectClassifier(object):
 			primary[4] += secondary[4]
 
 	@staticmethod
-	def area(point1, point2):
-		area = (point2[0] - point1[0]) * (point2[1] - point1[1])
+	def correction_for_object(object):
+		(_, box), _, _, _ = object
+		(x0, y0),(x1, y1) = box
+		x_correction = 0
+		y_correction = 0
+		for zone in range(0, NCSObjectClassifier.X_ZONES):
+			x_correction += round(NCSObjectClassifier.weight_of_zone_for_segment(x0, x1, zone, NCSObjectClassifier.X_ZONES, NCSObjectClassifier._X_ZONE_SIZE), 2)
+		for zone in range(0, NCSObjectClassifier.Y_ZONES):
+			y_correction += round(NCSObjectClassifier.weight_of_zone_for_segment(y0, y1, zone, NCSObjectClassifier.Y_ZONES, NCSObjectClassifier._Y_ZONE_SIZE), 2)
+		return (x_correction, y_correction)
+
+	@staticmethod
+	def weight_of_zone_for_segment(start, end, zone, zones, zone_length):
+		if (zone+1)*zone_length < start: return 0
+		elif zone*zone_length > end: return 0
+		if zone == 0: zone_weight = 2.0
+		elif zone == zones-1: zone_weight = -2.0
+		elif zone == (zones-1)/2: zone_weight = 0.0
+		elif zone == zones/2: zone_weight = 0.0
+		elif zone < (zones-1)/2: zone_weight = 1.0
+		elif zone > zones/2: zone_weight = -1.0
+		segment_in_zone = (min(end, (zone+1)*zone_length)-max(start, zone*zone_length))
+		return zone_weight * ((1.0 * segment_in_zone) / (end - start))
+
+	@staticmethod
+	def correction_for_zone(zone):
+		if zone[0] > NCSObjectClassifier.X_ZONES:
+			raise ValueError("Bad X zone calculation")
+		if zone[1] > NCSObjectClassifier.Y_ZONES:
+			raise ValueError("Bad Y zone calculation")
+		x = -9999
+		if zone[0] == 1: x = -2
+		elif zone[0] == 2: x = -1
+		elif zone[0] in (3,4): x = 0
+		elif zone[0] == 5: x = 1
+		elif zone[0] == 6: x = 2
+
+		y = -9999
+		if zone[1] == 1: y = -1
+		elif zone[1] in (2,3): y = 0
+		elif zone[1] == 4: y = 1
+
+		return (x, y)
+
+	@staticmethod
+	def zone_for_object(object):
+		center = NCSObjectClassifier.center(object[0][1])
+		x_zone = (center[0] / NCSObjectClassifier._X_ZONE_SIZE) + (1 if center[0] % NCSObjectClassifier._X_ZONE_SIZE else 0)
+		y_zone = (center[1] / NCSObjectClassifier._Y_ZONE_SIZE) + (1 if center[1] % NCSObjectClassifier._Y_ZONE_SIZE else 0)
+		logging.info("Box: {} Zone: {}, {}".format(object[0], x_zone, y_zone))
+		return (x_zone, y_zone)
+
+	@staticmethod
+	def center(box):
+		point1, point2 = box
+		return ((point2[0] + point1[0]) /2, (point2[1] + point1[1]) / 2)
+
+	@staticmethod
+	def area(box1, box2):
+		area = (box2[0] - box1[0]) * (box2[1] - box1[1])
 		return max(0, area)
 
 	@staticmethod
 	def overlap_area(prediction_1, prediction_2):
-		_, _, pred_1_box, _, _ = prediction_1
-		_, _, pred_2_box, _, _ = prediction_2
+		(_, pred_1_box), _, _, _ = prediction_1
+		(_, pred_2_box), _, _, _ = prediction_2
 		overlap_region = ((max(pred_1_box[0][0], pred_2_box[0][0]),
 			max(pred_1_box[0][1], pred_2_box[0][1])),
 			(max(pred_1_box[1][0], pred_2_box[1][0]),
@@ -131,7 +195,7 @@ class NCSObjectClassifier(object):
 	def get_most_interesting_object(self, predictions):
 		prioritized_objects = {}
 		for object in predictions:
-			_class, _confidence, _bound_box, _, _ = object
+			(_class, _bound_box), _confidence, _, _ = object
 			if _class not in NCSObjectClassifier.INTERESTING_CLASSES.keys():
 				continue
 			if NCSObjectClassifier.INTERESTING_CLASSES[_class] not in prioritized_objects.keys():
@@ -144,7 +208,7 @@ class NCSObjectClassifier(object):
 		highest_priority_objects = prioritized_objects[highest_priority]
 		max_area = 0
 		for important_object in highest_priority_objects:
-			_, _, _, area, _  = important_object
+			(_, _), _, area, _  = important_object
 			if area > max_area:
 				max_area = area
 				largest_object = important_object
@@ -199,8 +263,8 @@ class NCSObjectClassifier(object):
 				pred_generations_tracked = 1
 
 				# create prediction tuple and append the prediction to the
-				# predictions list
-				prediction = (pred_class, pred_conf, pred_boxpts, pred_area, pred_generations_tracked)
+				# predictions list, key, values...
+				prediction = [(pred_class, pred_boxpts), pred_conf, pred_area, pred_generations_tracked]
 				predictions.append(prediction)
 
 		# return the list of predictions to the calling function
