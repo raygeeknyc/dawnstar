@@ -77,7 +77,7 @@ class Dawnstar():
         info.tracked_bounds = self.tracked_bounds
         info.tracked_zone = self.tracked_zone
         info.frames = self.frames
-        info.corrections_to_zone = self.corrections_to_zone
+        info.corrections_to_zone = "({:0.1f},{:0.1f})".format(self.corrections_to_zone[0], self.corrections_to_zone[0]) if self.corrections_to_zone else "none"
         prev_frames = self.frames
         prev_ip_address = self.ip_address
         self._screen.refresh(info)
