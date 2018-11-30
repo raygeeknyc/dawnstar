@@ -57,12 +57,12 @@ class NCSObjectClassifier(object):
 
 	def _init_graph(self):
 		# open the CNN graph file
-		logging.info("loading the graph file into RPi memory...")
+		logging.debug("loading the graph file into RPi memory...")
 		with open(self.graph_filename, mode="rb") as f:
 			graph_in_memory = f.read()
 
 		# load the graph into the NCS
-		logging.info("allocating the graph on the NCS...")
+		logging.debug("allocating the graph on the NCS...")
 		self._graph = self.__class__.device.AllocateGraph(graph_in_memory)
 
 	@staticmethod
@@ -149,7 +149,7 @@ class NCSObjectClassifier(object):
 		center = NCSObjectClassifier.center(object[0][1])
 		x_zone = (center[0] / NCSObjectClassifier._X_ZONE_SIZE) + (1 if center[0] % NCSObjectClassifier._X_ZONE_SIZE else 0)
 		y_zone = (center[1] / NCSObjectClassifier._Y_ZONE_SIZE) + (1 if center[1] % NCSObjectClassifier._Y_ZONE_SIZE else 0)
-		logging.info("Box: {} Zone: {}, {}".format(object[0], x_zone, y_zone))
+		logging.debug("Box: {} Zone: {}, {}".format(object[0], x_zone, y_zone))
 		return (x_zone, y_zone)
 
 	@staticmethod
