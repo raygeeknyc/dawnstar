@@ -1,11 +1,15 @@
-<!DOCTYPE html>
 <html>
   <head>
-    <meta http-equiv="content-type" content="text/html; charset=utf-8">
-    <meta http-equiv="refresh" content="0.2">
-    <title>Here's what I see</title>
+    <title>What the robot sees</title>
+    <script language="JavaScript"><!--
+    function refreshIt() {
+       if (!document.images) return;
+       document.images['myCam'].src = '/FRAME.jpg?' + Math.random();
+       setTimeout('refreshIt()',330); // refresh at 3 fps
+    }
+    //--></script>
   </head>
-  <body>
-      <img src="/FRAME.jpg">
+  <body onLoad=" setTimeout('refreshIt()',330)">
+  <img src="/FRAME.jpg" name="myCam">
   </body>
 </html>
