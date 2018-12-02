@@ -42,8 +42,8 @@ class Dawnstar():
     print('Ip address: {}'.format(self._get_ip_address()))
 
   def startup(self):
-    self._object_consumer = threading.Thread(target = self._process_objects, args=())
-    self._object_consumer.start()
+    self._frame_consumer = threading.Thread(target = self._ingest_processed_frames, args=())
+    self._frame_consumer.start()
 
     self._screen_updater = threading.Thread(target = self._maintain_display, args=())
     self._screen_updater.start()
@@ -82,7 +82,22 @@ class Dawnstar():
         prev_ip_address = self.ip_address
         self._screen.refresh(info)
 
-  def _process_objects(self):
+  def _construct_info_image(self, frame, predictions, interesting_object):
+    (pred_class, bounds), _, _, age = interesting_object
+    image_for_display = frame.copy()
+    top_left, bottom_right = bounds
+    (startX, startY) = (top_left[0], top_left[1])
+    y = startY - 15 if startY - 15 > 15 else startY + 15
+
+    label = "{}[{}]".format(pred_class, age)
+    # display the rectangle and label text
+    cv2.rectangle(image_for_display, top_left, bottom_right,
+      COLORS[0], 2)
+    cv2.putText(image_for_display, label, (startX, y),
+      cv2.FONT_HERSHEY_SIMPLEX, 1, COLORS[0], 3)
+    return info_image
+
+  def _ingest_processed_frames(self):
     logging.debug("object consumer started")
     predictions = []
     while not self._process_event.is_set():
@@ -91,13 +106,13 @@ class Dawnstar():
       except Empty:
         continue 
       self.frames += 1
-      logging.info("Frame[{}] received".format(self.frames))
+      logging.debug("Frame[{}] received".format(self.frames))
       previous_predictions = predictions
       base_image, predictions, interesting_object = frame
       self.object_count = len(predictions)
       if interesting_object:
 	(_, self.tracked_bounds), _, self.tracked_area, self.tracked_generations = interesting_object
-	logging.info("bounds: {}".format(self.tracked_bounds))
+	logging.debug("bounds: {}".format(self.tracked_bounds))
         self.tracked_objects = 1
 	self.tracked_zone = ImageAnalyzer.object_center_zone(interesting_object)
 	self.corrections_to_zone = ImageAnalyzer.object_corrections_to_center(interesting_object)
@@ -107,7 +122,8 @@ class Dawnstar():
 	self.corrections_to_zone = None
       for (process_image, pred) in enumerate(predictions):
         (pred_class, _), pred_confidence, _, tracked_generations = pred
-        logging.info("Prediction class={}, confidence={}, age={}".format(pred_class, pred_confidence, tracked_generations))
+        logging.debug("Prediction class={}, confidence={}, age={}".format(pred_class, pred_confidence, tracked_generations))
+      debug_image = self._construct_info_image(base_image, predictions, interesting_object)
     logging.debug("Done consuming objects")
 
 def main():
@@ -131,17 +147,17 @@ def main():
     robot = Dawnstar(process_event, object_queue)
 
     image_analyzer = ImageAnalyzer(process_event, image_queue, object_queue, log_queue, logging.getLogger("").getEffectiveLevel())
-    logging.info("Starting image analyzer")
+    logging.debug("Starting image analyzer")
     image_analyzer.start()
 
     image_producer = imagecapture.frame_provider(process_event, image_queue, log_queue, logging.getLogger("").getEffectiveLevel())
-    logging.info("Starting image producer")
+    logging.debug("Starting image producer")
     image_producer.start()
 
     logging.info("Starting Robot")
     robot.startup()
 
-    logging.info("Robot running")
+    logging.debug("Robot running")
     try:
       while True:
         time.sleep(POLL_SECS)
@@ -153,13 +169,13 @@ def main():
   finally:
     logging.info("Ending")
     if image_producer:
-      logging.info("Waiting for image producer process")
+      logging.debug("Waiting for image producer process")
       image_producer.join()
-      logging.info("image producer process returned")
+      logging.debug("image producer process returned")
     if image_analyzer:
-      logging.info("Waiting for analyzer process")
+      logging.debug("Waiting for analyzer process")
       image_analyzer.join()
-      logging.info("analyzer process returned")
+      logging.debug("analyzer process returned")
   sys.exit(0)
 
 if __name__ == "__main__":
