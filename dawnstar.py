@@ -12,10 +12,12 @@ import subprocess
 import time
 import threading
 
+import cv2
+
 import multiprocessing
 from Queue import Empty
 from multiprocessingloghandler import ParentMultiProcessingLogHandler
-WEB_SERVER_BASEPATH = "./www"
+WEB_SERVER_BASEPATH = "/var/www/html"
 IMAGE_FRAME_NAME = "FRAME.jpg"
 
 REFRESH_DELAY_SECS = 2
@@ -27,6 +29,7 @@ from display import DisplayInfo, Display
 import imagecapture
 from imageanalyzer import ImageAnalyzer
 
+COLORS = [(200, 100, 100)]
 class Dawnstar():
   def __init__(self, event, object_queue):
     self._process_event = event
@@ -85,21 +88,25 @@ class Dawnstar():
         self._screen.refresh(info)
 
   def _construct_info_image(self, frame, predictions, interesting_object):
-    (pred_class, bounds), _, _, age = interesting_object
-    image_for_display = frame.copy()
-    top_left, bottom_right = bounds
-    (startX, startY) = (top_left[0], top_left[1])
-    y = startY - 15 if startY - 15 > 15 else startY + 15
+    image_to_decorate = frame.copy()
+    if interesting_object:
+      (pred_class, bounds), _, _, age = interesting_object
+      top_left, bottom_right = bounds
+      (startX, startY) = (top_left[0], top_left[1])
+      y = startY - 15 if startY - 15 > 15 else startY + 15
 
-    label = "{}[{}]".format(pred_class, age)
-    # display the rectangle and label text
-    cv2.rectangle(image_for_display, top_left, bottom_right,
-      COLORS[0], 2)
-    cv2.putText(image_for_display, label, (startX, y),
-      cv2.FONT_HERSHEY_SIMPLEX, 1, COLORS[0], 3)
-    return info_image
+      label = "{}[{}]".format(pred_class, age)
+      # display the rectangle and label text
+      cv2.rectangle(image_to_decorate, top_left, bottom_right,
+        COLORS[0], 2)
+      image_for_display = cv2.flip(image_to_decorate, 0)
+      cv2.putText(image_for_display, label, (startX, y),
+        cv2.FONT_HERSHEY_SIMPLEX, 1, COLORS[0], 3)
+    else:
+      image_for_display = cv2.flip(image_to_decorate, 0)
+    return image_for_display
 
-  def _write_frame_to_server(debug_image):
+  def _write_frame_to_server(self, debug_image):
     cv2.imwrite(os.path.join(WEB_SERVER_BASEPATH, IMAGE_FRAME_NAME), debug_image)
 
   def _ingest_processed_frames(self):
@@ -186,3 +193,4 @@ def main():
 
 if __name__ == "__main__":
   main()
+
