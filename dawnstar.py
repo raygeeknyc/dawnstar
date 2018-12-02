@@ -29,7 +29,7 @@ from display import DisplayInfo, Display
 import imagecapture
 from imageanalyzer import ImageAnalyzer
 
-COLORS = [(200, 100, 100)]
+COLORS = [(255, 200, 200), (100,100,200)]
 class Dawnstar():
   def __init__(self, event, object_queue):
     self._process_event = event
@@ -89,21 +89,27 @@ class Dawnstar():
 
   def _construct_info_image(self, frame, predictions, interesting_object):
     image_to_decorate = frame.copy()
+    for prediction in predictions:
+      (pred_class, bounds), _, _, age = prediction
+      top_left, bottom_right = bounds
+      (startX, startY) = (top_left[0], top_left[1])
+      y = startY - 15 if startY - 15 > 15 else startY + 15
+
+      if prediction == interesting_object:
+        cv2.rectangle(image_to_decorate, top_left, bottom_right,
+          COLORS[0], 2)
+      else:
+        cv2.rectangle(image_to_decorate, top_left, bottom_right,
+          COLORS[1], 1)
+    image_for_display = cv2.flip(image_to_decorate, 0)
     if interesting_object:
       (pred_class, bounds), _, _, age = interesting_object
       top_left, bottom_right = bounds
       (startX, startY) = (top_left[0], top_left[1])
       y = startY - 15 if startY - 15 > 15 else startY + 15
-
       label = "{}[{}]".format(pred_class, age)
-      # display the rectangle and label text
-      cv2.rectangle(image_to_decorate, top_left, bottom_right,
-        COLORS[0], 2)
-      image_for_display = cv2.flip(image_to_decorate, 0)
       cv2.putText(image_for_display, label, (startX, y),
         cv2.FONT_HERSHEY_SIMPLEX, 1, COLORS[0], 3)
-    else:
-      image_for_display = cv2.flip(image_to_decorate, 0)
     return image_for_display
 
   def _write_frame_to_server(self, debug_image):
