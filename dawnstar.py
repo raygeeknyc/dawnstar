@@ -15,6 +15,8 @@ import threading
 import multiprocessing
 from Queue import Empty
 from multiprocessingloghandler import ParentMultiProcessingLogHandler
+WEB_SERVER_BASEPATH = "./www"
+IMAGE_FRAME_NAME = "FRAME.jpg"
 
 REFRESH_DELAY_SECS = 2
 POLL_SECS = 0.1
@@ -97,6 +99,9 @@ class Dawnstar():
       cv2.FONT_HERSHEY_SIMPLEX, 1, COLORS[0], 3)
     return info_image
 
+  def _write_frame_to_server(debug_image):
+    cv2.imwrite(os.path.join(WEB_SERVER_BASEPATH, IMAGE_FRAME_NAME), debug_image)
+
   def _ingest_processed_frames(self):
     logging.debug("object consumer started")
     predictions = []
@@ -124,6 +129,7 @@ class Dawnstar():
         (pred_class, _), pred_confidence, _, tracked_generations = pred
         logging.debug("Prediction class={}, confidence={}, age={}".format(pred_class, pred_confidence, tracked_generations))
       debug_image = self._construct_info_image(base_image, predictions, interesting_object)
+      self._write_frame_to_server(debug_image)
     logging.debug("Done consuming objects")
 
 def main():
