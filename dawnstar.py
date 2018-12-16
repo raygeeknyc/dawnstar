@@ -72,7 +72,7 @@ class Dawnstar():
       if last_processed_frame != self.sequence_number:
         logging.debug("New frame")
         if not self.corrections_to_zone:
-          logging.debug("Stop")
+          logging.info("Stop")
           self._ambulator.stop()
         else:
           logging.debug("Turn")
@@ -83,6 +83,9 @@ class Dawnstar():
           elif steering > STEER_RIGHT_THRESHOLD:
             logging.debug("steering right: {}".format(steering))
             self._ambulator.nudge_right()
+          else:
+            logging.debug(" No correction")
+            self._ambulator.stop()
         last_processed_frame = self.sequence_number
     self._ambulator.stop()
 
@@ -111,7 +114,7 @@ class Dawnstar():
         info.tracked_bounds = self.tracked_bounds
         info.tracked_zone = self.tracked_zone
         info.frames = self.frames
-        info.corrections_to_zone = "({:0.1f},{:0.1f})".format(self.corrections_to_zone[0], self.corrections_to_zone[0]) if self.corrections_to_zone else "none"
+        info.corrections_to_zone = "({:0.1f},{:0.1f})".format(self.corrections_to_zone[0], self.corrections_to_zone[1]) if self.corrections_to_zone else "none"
         prev_frames = self.frames
         prev_ip_address = self.ip_address
         self._screen.refresh(info)
