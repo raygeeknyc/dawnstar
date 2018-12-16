@@ -1,4 +1,16 @@
 #include <RgbLed.h>
+#include <Wire.h>
+#define DEVICE_ADDRESS 0x15
+#define BUFFER_LENGTH 32
+
+#define LED_PIN 13
+
+int buffer_length = 0;
+boolean recvd;
+char recv_buffer[BUFFER_LENGTH];
+int left_speed = 0, right_speed = 0;
+#define LEFT_COMMAND 'L'
+#define RIGHT_COMMAND 'R'
 
 class BiDirectionalMotor {
   /* ***
@@ -105,35 +117,75 @@ void RightMotorInterruptService() {
 void setup() {
   Serial.begin(9600);
   Serial.println("setup");
+  pinMode(LED_PIN, OUTPUT);
+  digitalWrite(LED_PIN, HIGH);
   right_led = new RgbLedCommonAnode(2, 3, 3);
   left_led = new RgbLedCommonAnode(4, 5, 5);
+ 
+  Wire.begin(DEVICE_ADDRESS);
+  Wire.onRequest(requestEvent);
+  Wire.onReceive(receiveEvent);
+  recvd = false;  
 
   right_motor = new BiDirectionalMotor(9, 11, 12, right_led);
   left_motor = new BiDirectionalMotor(10, 7, 8, left_led);
   Serial.println("/setup");
   //Serial.send_now();
   delay(1000);
+  digitalWrite(LED_PIN, LOW);
+}
+
+void receiveEvent(int msgLength)
+{  
+  char command = ' ';
+  if (msgLength) {
+    command = (char)Wire.read();
+  }
+
+  if (command == LEFT_COMMAND) {
+    left_speed = Wire.available()?Wire.read():0;
+    left_speed += (Wire.available()?Wire.read():0) * 256;
+  } else if (command == RIGHT_COMMAND) {
+    right_speed = Wire.available()?Wire.read():0;
+    right_speed += (Wire.available()?Wire.read():0) * 256;
+  }
+  while (Wire.available()) {
+    Wire.read();
+  }
+  recvd = true;
+}
+
+void requestEvent()
+{
+  Wire.write(right_speed  & 0xFF);
+  Wire.write((right_speed >> 8) & 0xFF);
+  Wire.write(left_speed  & 0xFF);
+  Wire.write((left_speed >> 8) & 0xFF);
 }
 
 void loop() {
-  left_motor->driveFwd(127);
-  right_motor->driveFwd(127);
-  delay(2000);  
-
-  right_motor->driveBwd(255);
-  delay(2000);  
-
-  left_motor->driveBwd(127);
-  delay(2000);  
-
-  right_motor->driveFwd(255);
-  delay(2000);  
-
-  left_motor->driveFwd(255);
-  delay(2000);  
-
-  right_motor->fullStop();
-  left_motor->fullStop();
-  delay(2000);  
-
+  if (recvd) {
+    digitalWrite(LED_PIN, HIGH);
+    Serial.print("left: ");
+    Serial.print(left_speed);
+    Serial.print(" right: ");
+    Serial.println(right_speed);
+    recvd = false;
+  }
+  if (left_speed > 0) {
+    left_motor->driveFwd(left_speed);
+  } else if (left_speed < 0) {
+    left_motor->driveBwd(-1 * left_speed);
+  } else {
+    left_motor->fullStop();
+  }
+  
+  if (right_speed > 0) {
+    right_motor->driveFwd(right_speed);
+  } else if (left_speed < 0) {
+    right_motor->driveBwd(-1 * right_speed);
+  } else {
+    right_motor->fullStop();
+  }
+  digitalWrite(LED_PIN, LOW);
 }
