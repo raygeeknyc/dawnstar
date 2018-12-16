@@ -9,6 +9,7 @@ _DEBUG=logging.DEBUG
 MAX_SPEED = 2048
 MIN_SPEED = -1 * MAX_SPEED
 REST_SPEED = 0
+NUDGE_SPEED =  (MAX_SPEED - REST_SPEED) / 4
 
 import sys
 import smbus
@@ -21,7 +22,7 @@ _CMD_RIGHT = ord('R')
 _CMD_LEFT = ord('L')
 
 class Ambulator():
-    def __init__(self, slave_device_address):
+    def __init__(self, slave_device_address = SLAVE_DEVICE_ADDRESS):
         self._bus = smbus.SMBus(I2C_BUS)
         self._slave_device_address = slave_device_address
 
@@ -47,6 +48,14 @@ class Ambulator():
         speed = max(speed, MIN_SPEED)
         self._send_command(_CMD_LEFT, speed)
 
+    def nudge_left(self):
+        self.left(REST_SPEED)
+        self.right(NUDGE_SPEED)
+
+    def nudge_right(self):
+        self.right(REST_SPEED)
+        self.left(NUDGE_SPEED)
+
     def _send_command(self, command, value):
         high_byte = value & 0xFF
         low_byte = (value >> 8) & 0xFF
@@ -63,7 +72,7 @@ class Ambulator():
         return values
 
 def main():
-  walker = Ambulator(SLAVE_DEVICE_ADDRESS)
+  walker = Ambulator()
   walker.backward(127)
   values = walker.get_values()
   logging.debug("Values: {}".format(values))

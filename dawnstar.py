@@ -25,9 +25,13 @@ POLL_SECS = 0.1
 IP_ADDRESS_RESOLUTION_DELAY_SECS = 1
 STOP = None
 
+STEER_RIGHT_THRESHOLD = 0.75
+STEER_LEFT_THRESHOLD = -0.75
+
 from display import DisplayInfo, Display
 import imagecapture
 from imageanalyzer import ImageAnalyzer
+from ambulator import Ambulator
 
 COLORS = [(255, 200, 200), (100,100,200)]
 class Dawnstar():
@@ -43,7 +47,9 @@ class Dawnstar():
     self.tracked_zone = (0, 0)
     self.corrections_to_zone = None
     self._screen = Display()
+    self._ambulator = Ambulator()
     self._object_queue = object_queue
+    self.sequence_number = None
     print('Ip address: {}'.format(self._get_ip_address()))
 
   def startup(self):
@@ -53,10 +59,33 @@ class Dawnstar():
     self._screen_updater = threading.Thread(target = self._maintain_display, args=())
     self._screen_updater.start()
 
+    self._walker = threading.Thread(target = self._maintain_position, args=())
+    self._walker.start()
+
     while not self.ip_address:
       self._get_ip_address()
       time.sleep(IP_ADDRESS_RESOLUTION_DELAY_SECS)
-     
+
+  def _maintain_position(self):
+    last_processed_frame = 0
+    while not self._process_event.is_set():
+      if last_processed_frame != self.sequence_number:
+        logging.debug("New frame")
+        if not self.corrections_to_zone:
+          logging.debug("Stop")
+          self._ambulator.stop()
+        else:
+          logging.debug("Turn")
+          steering = self.corrections_to_zone[0]
+          if steering < STEER_LEFT_THRESHOLD:
+            logging.debug("steering left: {}".format(steering))
+            self._ambulator.nudge_left()
+          elif steering > STEER_RIGHT_THRESHOLD:
+            logging.debug("steering right: {}".format(steering))
+            self._ambulator.nudge_right()
+        last_processed_frame = self.sequence_number
+    self._ambulator.stop()
+
   def _get_ip_address(self):
     try:
       if not self.ip_address:
@@ -126,12 +155,13 @@ class Dawnstar():
       self.frames += 1
       logging.debug("Frame[{}] received".format(self.frames))
       previous_predictions = predictions
-      base_image, predictions, interesting_object = frame
+      (sequence_number, base_image), predictions, interesting_object = frame
       self.object_count = len(predictions)
       if interesting_object:
 	(_, self.tracked_bounds), _, self.tracked_area, self.tracked_generations = interesting_object
 	logging.debug("bounds: {}".format(self.tracked_bounds))
         self.tracked_objects = 1
+        self.sequence_number = sequence_number
 	self.tracked_zone = ImageAnalyzer.object_center_zone(interesting_object)
 	self.corrections_to_zone = ImageAnalyzer.object_corrections_to_center(interesting_object)
       else:

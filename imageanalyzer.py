@@ -66,7 +66,7 @@ class ImageAnalyzer(multiprocessing.Process):
                 raise ValueError("Missing current prediction")
             current_object[3] += previous_object[3]
 
-    def _process_image(self, image, frame_number):
+    def _process_image(self, frame_number, image):
         logging.debug("Processing image {}".format(frame_number))
 	predictions = self._classifier.get_likely_objects(image)
         logging.debug("predictions : {}".format(predictions))
@@ -79,7 +79,8 @@ class ImageAnalyzer(multiprocessing.Process):
 	interesting_object = self._classifier.get_most_interesting_object(predictions)
        	if not self._exit.is_set():
         	logging.debug("Queuing processed image {}".format(frame_number))
-        	self._object_queue.put((image, predictions, interesting_object))
+        	frame_envelope = (frame_number, image)
+        	self._object_queue.put((frame_envelope, predictions, interesting_object))
 		self._previous_predictions = predictions
 
     def _get_images(self):
@@ -99,7 +100,7 @@ class ImageAnalyzer(multiprocessing.Process):
                     continue
         	if self._exit.is_set():
                     continue
-                self._process_image(image, frame_number)
+                self._process_image(frame_number, image)
                 image = None
             except Exception, e:
                 logging.exception("error consuming images")
