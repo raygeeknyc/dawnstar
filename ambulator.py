@@ -25,6 +25,7 @@ class Ambulator():
     def __init__(self, slave_device_address = SLAVE_DEVICE_ADDRESS):
         self._bus = smbus.SMBus(I2C_BUS)
         self._slave_device_address = slave_device_address
+        logging.info("Motor controller at {} device# {}".format(I2C_BUS, slave_device_address))
 
     def stop(self):
         self.right(REST_SPEED)
