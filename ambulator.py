@@ -50,12 +50,12 @@ class Ambulator():
         self._send_command(_CMD_LEFT, speed)
 
     def nudge_left(self):
-        self.left(REST_SPEED)
         self.right(NUDGE_SPEED)
+        self.left(-1 * NUDGE_SPEED)
 
     def nudge_right(self):
-        self.right(REST_SPEED)
         self.left(NUDGE_SPEED)
+        self.right(-1 * NUDGE_SPEED)
 
     def _send_command(self, command, value):
         high_byte = value & 0xFF
