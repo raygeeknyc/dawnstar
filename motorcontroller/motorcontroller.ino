@@ -149,10 +149,8 @@ void receiveEvent(int msgLength)
     if (high_byte&0x80) {
       high_byte = 256 - high_byte;
       high_byte *= -1;
-      left_speed += (high_byte * 256);
-    } else {
-      left_speed += high_byte * 256;
     }
+    left_speed += high_byte * 256;
   } else if (command == RIGHT_COMMAND) {
     int low_byte = Wire.available()?Wire.read():0;
     int high_byte = Wire.available()?Wire.read():0;
@@ -160,10 +158,8 @@ void receiveEvent(int msgLength)
     if (high_byte&0x80) {
       high_byte = 256 - high_byte;
       high_byte *= -1;
-      right_speed += (high_byte * 256);
-    } else {
-      right_speed += high_byte * 256;
     }
+    right_speed += high_byte * 256;
   }
   while (Wire.available()) {
     Wire.read();
