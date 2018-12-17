@@ -60,7 +60,7 @@ void BiDirectionalMotorWithEncoders::incrementEncoderCount() {
 }
 
 void BiDirectionalMotor::driveFwd(int target_speed) {
-  this->led->setColor(Color::BLUE);
+  this->led->setColor(Color::GREEN);
   this->direction_ = this->FWD;
   this->target_speed = target_speed;
   pinMode(this->fwd_pin, OUTPUT);
@@ -119,8 +119,8 @@ void setup() {
   Serial.println("setup");
   pinMode(LED_PIN, OUTPUT);
   digitalWrite(LED_PIN, HIGH);
-  right_led = new RgbLedCommonAnode(2, 3, 3);
-  left_led = new RgbLedCommonAnode(4, 5, 5);
+  right_led = new RgbLedCommonAnode(3, 4, 4);
+  left_led = new RgbLedCommonAnode(5, 6, 6);
  
   Wire.begin(DEVICE_ADDRESS);
   Wire.onRequest(requestEvent);
@@ -143,11 +143,27 @@ void receiveEvent(int msgLength)
   }
 
   if (command == LEFT_COMMAND) {
-    left_speed = Wire.available()?Wire.read():0;
-    left_speed += (Wire.available()?Wire.read():0) * 256;
+    int low_byte = Wire.available()?Wire.read():0;
+    int high_byte = Wire.available()?Wire.read():0;
+    left_speed = low_byte;
+    if (high_byte&0x80) {
+      high_byte = 256 - high_byte;
+      high_byte *= -1;
+      left_speed += (high_byte * 256);
+    } else {
+      left_speed += high_byte * 256;
+    }
   } else if (command == RIGHT_COMMAND) {
-    right_speed = Wire.available()?Wire.read():0;
-    right_speed += (Wire.available()?Wire.read():0) * 256;
+    int low_byte = Wire.available()?Wire.read():0;
+    int high_byte = Wire.available()?Wire.read():0;
+    right_speed = low_byte;
+    if (high_byte&0x80) {
+      high_byte = 256 - high_byte;
+      high_byte *= -1;
+      right_speed += (high_byte * 256);
+    } else {
+      right_speed += high_byte * 256;
+    }
   }
   while (Wire.available()) {
     Wire.read();
@@ -182,7 +198,7 @@ void loop() {
   
   if (right_speed > 0) {
     right_motor->driveFwd(right_speed);
-  } else if (left_speed < 0) {
+  } else if (right_speed < 0) {
     right_motor->driveBwd(-1 * right_speed);
   } else {
     right_motor->fullStop();
