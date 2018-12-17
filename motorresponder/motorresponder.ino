@@ -61,6 +61,7 @@ void loop() {
     Serial.print(" right: ");
     Serial.println(right_speed);
     recvd = false;
+    delay(500);
     digitalWrite(LED_PIN, LOW);
   }
 }
