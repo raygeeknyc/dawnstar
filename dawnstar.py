@@ -20,13 +20,11 @@ from multiprocessingloghandler import ParentMultiProcessingLogHandler
 WEB_SERVER_BASEPATH = "/var/www/html"
 IMAGE_FRAME_NAME = "FRAME.jpg"
 
-REFRESH_DELAY_SECS = 2
-POLL_SECS = 0.1
-IP_ADDRESS_RESOLUTION_DELAY_SECS = 1
-STOP = None
+POLL_SECS = 1.0
+IP_ADDRESS_RESOLUTION_DELAY_SECS = 1.0
 
 STEER_RIGHT_THRESHOLD = 0.75
-STEER_LEFT_THRESHOLD = -0.75
+STEER_LEFT_THRESHOLD = -1 * STEER_RIGHT_THRESHOLD
 
 from display import DisplayInfo, Display
 import imagecapture
@@ -34,6 +32,7 @@ from imageanalyzer import ImageAnalyzer
 from ambulator import Ambulator
 
 COLORS = [(255, 200, 200), (100,100,200)]
+
 class Dawnstar():
   def __init__(self, event, object_queue):
     self._process_event = event
@@ -61,10 +60,6 @@ class Dawnstar():
 
     self._walker = threading.Thread(target = self._maintain_position, args=())
     self._walker.start()
-
-    while not self.ip_address:
-      self._get_ip_address()
-      time.sleep(IP_ADDRESS_RESOLUTION_DELAY_SECS)
 
   def _maintain_position(self):
     last_processed_frame = 0
@@ -179,8 +174,6 @@ class Dawnstar():
     logging.debug("Done consuming objects")
 
 def main():
-  STOP = False
-
   image_producer = None
   image_analyzer = None
 
@@ -194,8 +187,8 @@ def main():
     logging.getLogger("").setLevel(_DEBUG)
 
     image_queue = multiprocessing.Queue()
-
     object_queue = multiprocessing.Queue()
+
     robot = Dawnstar(process_event, object_queue)
 
     image_analyzer = ImageAnalyzer(process_event, image_queue, object_queue, log_queue, logging.getLogger("").getEffectiveLevel())
@@ -209,8 +202,13 @@ def main():
     logging.info("Starting Robot")
     robot.startup()
 
-    logging.debug("Robot running")
+    logging.info("Robot running")
     try:
+      while not robot.ip_address:
+        robot._get_ip_address()
+        time.sleep(IP_ADDRESS_RESOLUTION_DELAY_SECS)
+      logging.info("Robot connected to the internet")
+
       while True:
         time.sleep(POLL_SECS)
     except KeyboardInterrupt, e:
