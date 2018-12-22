@@ -25,6 +25,7 @@ IP_ADDRESS_RESOLUTION_DELAY_SECS = 1.0
 
 STEER_RIGHT_THRESHOLD = 0.75
 STEER_LEFT_THRESHOLD = -1 * STEER_RIGHT_THRESHOLD
+MIN_GENERATIONS_TO_CENTER = 2
 
 from display import DisplayInfo, Display
 import imagecapture
@@ -66,22 +67,25 @@ class Dawnstar():
     while not self._process_event.is_set():
       if last_processed_frame != self.sequence_number:
         logging.debug("New frame")
+        last_processed_frame = self.sequence_number
         if not self.corrections_to_zone:
           logging.info("Stop")
           self._ambulator.stop()
         else:
-          logging.debug("Turn")
-          steering = self.corrections_to_zone[0]
-          if steering < STEER_LEFT_THRESHOLD:
-            logging.debug("steering left: {}".format(steering))
-            self._ambulator.nudge_left()
-          elif steering > STEER_RIGHT_THRESHOLD:
-            logging.debug("steering right: {}".format(steering))
-            self._ambulator.nudge_right()
+          if self.tracked_generations < MIN_GENERATIONS_TO_CENTER:
+            logging.debug("Not turning yet")
           else:
-            logging.debug(" No correction")
-            self._ambulator.stop()
-        last_processed_frame = self.sequence_number
+            logging.debug("Turn")
+            steering = self.corrections_to_zone[0]
+            if steering < STEER_LEFT_THRESHOLD:
+              logging.debug("Steering left: {}".format(steering))
+              self._ambulator.nudge_left()
+            elif steering > STEER_RIGHT_THRESHOLD:
+              logging.debug("Steering right: {}".format(steering))
+              self._ambulator.nudge_right()
+            else:
+              logging.debug("No correction needed")
+              self._ambulator.stop()
     self._ambulator.stop()
 
   def _get_ip_address(self):
