@@ -169,6 +169,7 @@ class Dawnstar():
       else:
         self.tracked_objects = 0
 	self.tracked_zone = None
+        self.sequence_number = sequence_number
 	self.corrections_to_zone = None
       for (process_image, pred) in enumerate(predictions):
         (pred_class, _), pred_confidence, _, tracked_generations = pred

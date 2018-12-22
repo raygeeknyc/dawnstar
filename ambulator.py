@@ -4,8 +4,8 @@
 
 import time
 import logging
-_DEBUG=logging.INFO
 _DEBUG=logging.DEBUG
+_DEBUG=logging.INFO
 MAX_SPEED = 2048
 MIN_SPEED = -1 * MAX_SPEED
 REST_SPEED = 0
