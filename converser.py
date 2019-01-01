@@ -1,4 +1,5 @@
 import multiprocessing
+import logging
 from multiprocessingloghandler import ChildMultiProcessingLogHandler, ParentMultiProcessingLogHandler
 
 import argparse
@@ -36,6 +37,7 @@ class Converser(multiprocessing.Process):
         self._exit = event
         self._log_queue = log_queue
         self._logging_level = logging_level
+        self._init_assistant()
 
     def _init_logging(self):
         handler = ChildMultiProcessingLogHandler(self._log_queue)
@@ -58,13 +60,14 @@ class Converser(multiprocessing.Process):
 
     def _converse(self):
         while not self._exit.is_set():
-            pass 
+            for event in self._events:
+                process_event(self._event, self._assistant)
 
-    def take_photo():
+    def take_photo(self):
         with picamera.PiCamera() as camera:
             camera.capture('image.jpg')
         
-    def use_computer_vision(label_picture=True):
+    def use_computer_vision(self, label_picture=True):
         #take picture
         take_photo()
         
@@ -148,11 +151,11 @@ class Converser(multiprocessing.Process):
             
         
     
-    def say(assistant, text):
+    def say(send, assistant, text):
         assistant.send_text_query('Repeat after me {}'.format(text))
     
     
-    def handle_what_is_this(assistant):
+    def handle_what_is_this(self, assistant):
         say(assistant, "hmm, let me take a look")
         verbal_list = use_computer_vision()
         if "face" in verbal_list:
@@ -162,13 +165,13 @@ class Converser(multiprocessing.Process):
             say(assistant, "I see "+verbal_list[0] + ", or " + verbal_list[1] + ", or " + verbal_list[2])
     
     
-    def handle_ship_it(assistant):
+    def handle_ship_it(self, assistant):
         say(assistant, 'Stop trying to be Sarah Cooper')
     
-    def handle_what_do_you_think(assistant):
+    def handle_what_do_you_think(self, assistant):
         say(assistant, 'Ship it')
     
-    def handle_meet_your_maker(assistant):
+    def handle_meet_your_maker(self, assistant):
         say(assistant,
            'I was created at the Google New York IOT Intern Hackathon by'
            'Stephen, Charlotte, David, Nishir, and Two')
@@ -182,7 +185,7 @@ class Converser(multiprocessing.Process):
         'meet your maker': handle_meet_your_maker,
     }
     
-    def process_event(event, assistant):
+    def _process_event(self, event, assistant):
         """Pretty prints events.
         Prints all events that occur with two spaces between each new
         conversation and a single space between turns of a conversation.
@@ -210,7 +213,7 @@ class Converser(multiprocessing.Process):
                     handler(assistant)
                     break
     
-    def __init__(self):
+    def _init_assistant(self):
         parser = argparse.ArgumentParser(
             formatter_class=argparse.RawTextHelpFormatter)
         parser.add_argument('--device-model-id', '--device_model_id', type=str,
@@ -261,31 +264,27 @@ class Converser(multiprocessing.Process):
         should_register = (
             args.device_model_id and args.device_model_id != device_model_id)
     
-        device_model_id = args.device_model_id or device_model_id
+        self._device_model_id = args.device_model_id or device_model_id
     
-        with Assistant(credentials, device_model_id) as assistant:
-            events = assistant.start()
+        self._assistant = Assistant(credentials, self._device_model_id)
+        self._events = self._assistant.start()
     
-            device_id = assistant.device_id
-            print('device_model_id:', device_model_id)
-            print('device_id:', device_id + '\n')
+        self._device_id = self._assistant.device_id
+        logging.info('device_model_id: {}'.format(self._device_model_id))
+        logging.info('device_id: {}'.format(self._device_id))
     
-            # Re-register if "device_id" is different from the last "device_id":
-            if should_register or (device_id != last_device_id):
-                if args.project_id:
-                    register_device(args.project_id, credentials,
-                                    device_model_id, device_id)
-                    pathlib.Path(os.path.dirname(args.device_config)).mkdir(
-                        exist_ok=True)
-                    with open(args.device_config, 'w') as f:
-                        json.dump({
-                            'last_device_id': device_id,
-                            'model_id': device_model_id,
+        # Re-register if "device_id" is different from the last "device_id":
+        if should_register or (self._device_id != last_device_id):
+            if args.project_id:
+                self.register_device(args.project_id, credentials,
+                    self._device_model_id, self._device_id)
+                pathlib.Path(os.path.dirname(args.device_config)).mkdir(
+                    exist_ok=True)
+                with open(args.device_config, 'w') as f:
+                    json.dump({
+                            'last_device_id': self._device_id,
+                            'model_id': self._device_model_id,
                         }, f)
-                else:
-                    print(WARNING_NOT_REGISTERED)
-    
-            assistant.send_text_query("Repeat after me" + " Welcome to Orion!")
-    
-            for event in events:
-                process_event(event, assistant)
+            else:
+                logging.warning(WARNING_NOT_REGISTERED)
+        self._assistant.send_text_query("Repeat after me" + " I am a robot!")

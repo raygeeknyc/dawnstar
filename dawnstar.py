@@ -31,6 +31,7 @@ from display import DisplayInfo, Display
 import imagecapture
 from imageanalyzer import ImageAnalyzer
 from ambulator import Ambulator
+from converser import Converser
 
 COLORS = [(255, 200, 200), (100,100,200)]
 
@@ -203,6 +204,10 @@ def main():
     image_producer = imagecapture.frame_provider(process_event, image_queue, log_queue, logging.getLogger("").getEffectiveLevel())
     logging.debug("Starting image producer")
     image_producer.start()
+
+    converser = Converser(process_event, log_queue, logging.getLogger("").getEffectiveLevel())
+    logging.debug("Starting converser")
+    converser.start()
 
     logging.info("Starting Robot")
     robot.startup()
