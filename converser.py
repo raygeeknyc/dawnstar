@@ -156,13 +156,13 @@ class Converser(multiprocessing.Process):
         assistant.send_text_query('Repeat after me {}'.format(text))
     
     def handle_what_is_this(self, assistant):
-        say(assistant, "hmm, let me take a look")
+        self.say(assistant, "hmm, let me take a look")
         verbal_list = use_computer_vision()
         if "face" in verbal_list:
             emotion = use_computer_vision(False)
-            say(assistant, "I see "+verbal_list[0] + ", or " + verbal_list[1] + ", or " + verbal_list[2] + ", " + "and the face looks " + " " + emotion)
+            self.say(assistant, "I see "+verbal_list[0] + ", or " + verbal_list[1] + ", or " + verbal_list[2] + ", " + "and the face looks " + " " + emotion)
         else:
-            say(assistant, "I see "+verbal_list[0] + ", or " + verbal_list[1] + ", or " + verbal_list[2])
+            self.say(assistant, "I see "+verbal_list[0] + ", or " + verbal_list[1] + ", or " + verbal_list[2])
     
     
     def handle_ship_it(self, assistant):
