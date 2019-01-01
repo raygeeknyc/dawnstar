@@ -37,11 +37,32 @@ class Converser(multiprocessing.Process):
         self._log_queue = log_queue
         self._logging_level = logging_level
 
+    def _init_logging(self):
+        handler = ChildMultiProcessingLogHandler(self._log_queue)
+        logging.getLogger(str(os.getpid())).addHandler(handler)
+        logging.getLogger(str(os.getpid())).setLevel(self._logging_level)
+
+    def _cleanup(self):
+        logging.debug("Cleaning up")
+
+    def run(self):
+        self._init_logging()
+        logging.debug("Assistant running")
+        try:
+            self._converse()
+        except Exception, e:
+            logging.exception("Error in analyzer main thread")
+        finally:
+            self._cleanup()
+            logging.debug("Exiting image analyzer")
+
+    def _converse(self):
+        while not self._exit.is_set():
+            pass 
 
     def take_photo():
         with picamera.PiCamera() as camera:
             camera.capture('image.jpg')
-        
         
     def use_computer_vision(label_picture=True):
         #take picture
