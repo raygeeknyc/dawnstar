@@ -37,7 +37,6 @@ class Converser(multiprocessing.Process):
         self._exit = event
         self._log_queue = log_queue
         self._logging_level = logging_level
-        self._init_assistant()
 
     def _init_logging(self):
         handler = ChildMultiProcessingLogHandler(self._log_queue)
@@ -49,6 +48,7 @@ class Converser(multiprocessing.Process):
 
     def run(self):
         self._init_logging()
+        self._init_assistant()
         logging.debug("Assistant running")
         try:
             self._converse()
@@ -59,13 +59,12 @@ class Converser(multiprocessing.Process):
             logging.debug("Exiting Assistant")
 
     def _converse(self):
-        logging.info("Conversing")
+        logging.debug("Conversing")
         for event in self._events:
-            logging.info("Event")
             if self._exit.is_set():
                 break
-            self._process_event(self._event, self._assistant)
-        logging.info("Done conversing")
+            self._process_event(event, self._assistant)
+        logging.debug("Done conversing")
 
     def take_photo(self):
         with picamera.PiCamera() as camera:
@@ -153,11 +152,8 @@ class Converser(multiprocessing.Process):
     ##    dict_emotions = {'VERY_UNLIKELY': 0, 'UNLIKELY': 1, 'POSSIBLE': 2, 'LIKELY': 3, 'VERY_LIKELY': 4}
     ##    for emotion in lst:
             
-        
-    
-    def say(send, assistant, text):
+    def say(self, assistant, text):
         assistant.send_text_query('Repeat after me {}'.format(text))
-    
     
     def handle_what_is_this(self, assistant):
         say(assistant, "hmm, let me take a look")
@@ -170,13 +166,13 @@ class Converser(multiprocessing.Process):
     
     
     def handle_ship_it(self, assistant):
-        say(assistant, 'Stop trying to be Sarah Cooper')
+        self.say(assistant, 'Stop trying to be Sarah Cooper')
     
     def handle_what_do_you_think(self, assistant):
-        say(assistant, 'Ship it')
+        self.say(assistant, 'Ship it')
     
     def handle_meet_your_maker(self, assistant):
-        say(assistant,
+        self.say(assistant,
            'I was created at the Google New York IOT Intern Hackathon by'
            'Stephen, Charlotte, David, Nishir, and Two')
     
@@ -188,7 +184,6 @@ class Converser(multiprocessing.Process):
         Args:
             event(event.Event): The current event to process.
         """
-        logging.info("EventType: {}".format(event.type))
         if event.type == EventType.ON_CONVERSATION_TURN_STARTED:
             print()
     
@@ -204,8 +199,7 @@ class Converser(multiprocessing.Process):
         if (event.type == EventType.ON_RECOGNIZING_SPEECH_FINISHED and
                 event.args and 'text' in event.args):
             text = event.args['text']
-            logging.info('Speech finished {}'.format(text))
-            for trigger, handler in self._trigger.items():
+            for trigger, handler in self._triggers.items():
                 if trigger in text:
                     assistant.stop_conversation()
                     handler(assistant)
@@ -268,8 +262,8 @@ class Converser(multiprocessing.Process):
         self._events = self._assistant.start()
     
         self._device_id = self._assistant.device_id
-        logging.info('device_model_id: {}'.format(self._device_model_id))
-        logging.info('device_id: {}'.format(self._device_id))
+        logging.debug('device_model_id: {}'.format(self._device_model_id))
+        logging.debug('device_id: {}'.format(self._device_id))
     
         # Re-register if "device_id" is different from the last "device_id":
         if should_register or (self._device_id != last_device_id):
