@@ -59,9 +59,10 @@ class Converser(multiprocessing.Process):
             logging.debug("Exiting image analyzer")
 
     def _converse(self):
-        while not self._exit.is_set():
-            for event in self._events:
-                process_event(self._event, self._assistant)
+        for event in self._events:
+            if self._exit.is_set():
+                break
+            process_event(self._event, self._assistant)
 
     def take_photo(self):
         with picamera.PiCamera() as camera:
