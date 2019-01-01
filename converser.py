@@ -53,16 +53,19 @@ class Converser(multiprocessing.Process):
         try:
             self._converse()
         except Exception, e:
-            logging.exception("Error in analyzer main thread")
+            logging.exception("Error in converser main thread")
         finally:
             self._cleanup()
-            logging.debug("Exiting image analyzer")
+            logging.debug("Exiting Assistant")
 
     def _converse(self):
+        logging.info("Conversing")
         for event in self._events:
+            logging.info("Event")
             if self._exit.is_set():
                 break
-            process_event(self._event, self._assistant)
+            self._process_event(self._event, self._assistant)
+        logging.info("Done conversing")
 
     def take_photo(self):
         with picamera.PiCamera() as camera:
@@ -178,14 +181,6 @@ class Converser(multiprocessing.Process):
            'Stephen, Charlotte, David, Nishir, and Two')
     
     
-    TRIGGERS = {
-        'what is this': handle_what_is_this,
-        'what is that': handle_what_is_this,
-        'ship it': handle_ship_it,
-        'what do you think': handle_what_do_you_think,
-        'meet your maker': handle_meet_your_maker,
-    }
-    
     def _process_event(self, event, assistant):
         """Pretty prints events.
         Prints all events that occur with two spaces between each new
@@ -193,6 +188,7 @@ class Converser(multiprocessing.Process):
         Args:
             event(event.Event): The current event to process.
         """
+        logging.info("EventType: {}".format(event.type))
         if event.type == EventType.ON_CONVERSATION_TURN_STARTED:
             print()
     
@@ -208,7 +204,8 @@ class Converser(multiprocessing.Process):
         if (event.type == EventType.ON_RECOGNIZING_SPEECH_FINISHED and
                 event.args and 'text' in event.args):
             text = event.args['text']
-            for trigger, handler in TRIGGERS.items():
+            logging.info('Speech finished {}'.format(text))
+            for trigger, handler in self._trigger.items():
                 if trigger in text:
                     assistant.stop_conversation()
                     handler(assistant)
@@ -288,4 +285,12 @@ class Converser(multiprocessing.Process):
                         }, f)
             else:
                 logging.warning(WARNING_NOT_REGISTERED)
+        self._triggers = {
+            'what is this': self.handle_what_is_this,
+            'what is that': self.handle_what_is_this,
+            'ship it': self.handle_ship_it,
+            'what do you think': self.handle_what_do_you_think,
+            'meet your maker': self.handle_meet_your_maker,
+        }
+    
         self._assistant.send_text_query("Repeat after me" + " I am a robot!")
