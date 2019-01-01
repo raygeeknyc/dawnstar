@@ -228,6 +228,10 @@ def main():
     logging.exception("Error raised in main()")
   finally:
     logging.info("Ending")
+    if converser:
+      logging.debug("Waiting for converser process")
+      converser.join()
+      logging.debug("converser process returned")
     if image_producer:
       logging.debug("Waiting for image producer process")
       image_producer.join()
