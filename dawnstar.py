@@ -70,7 +70,7 @@ class Dawnstar():
         logging.debug("New frame")
         last_processed_frame = self.sequence_number
         if not self.corrections_to_zone:
-          logging.info("Stop")
+          logging.debug("Stop")
           self._ambulator.stop()
         else:
           if self.tracked_generations < MIN_GENERATIONS_TO_CENTER:
