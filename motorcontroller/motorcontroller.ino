@@ -18,7 +18,7 @@ class BiDirectionalMotor {
      dual H bridge.
    * ***/
   public:
-    BiDirectionalMotor(int speed_pin, int fwd_pin, int bwd_pin, RgbLed_ *indicator_led); 
+    BiDirectionalMotor(int speed_pin, int fwd_pin, int bwd_pin);
     void driveFwd(int target_speed);    
     void driveBwd(int target_speed);    
     void fullStop();
@@ -39,7 +39,7 @@ class BiDirectionalMotor {
 
 class BiDirectionalMotorWithEncoders : public BiDirectionalMotor {
 public:
-    BiDirectionalMotorWithEncoders(int speed_pin, int fwd_pin, int bwd_pin, int encoder_interrupt_number, int encoder_pin, RgbLed_ *indicator_led, void (*interrupt_service_routine)(void));
+    BiDirectionalMotorWithEncoders(int speed_pin, int fwd_pin, int bwd_pin, int encoder_interrupt_number, int encoder_pin, void (*interrupt_service_routine)(void));
     int tick_count;
     void incrementEncoderCount();
 protected:
@@ -47,8 +47,8 @@ protected:
     int encoder_pin;
 };
 
-BiDirectionalMotorWithEncoders::BiDirectionalMotorWithEncoders(int speed_pin, int fwd_pin, int bwd_pin, int encoder_interrupt_number, int encoder_pin, RgbLed_ *indicator_led, void(*interrupt_service_routine)(void))
-:BiDirectionalMotor(speed_pin, fwd_pin, bwd_pin, indicator_led) {
+BiDirectionalMotorWithEncoders::BiDirectionalMotorWithEncoders(int speed_pin, int fwd_pin, int bwd_pin, int encoder_interrupt_number, int encoder_pin, void(*interrupt_service_routine)(void))
+:BiDirectionalMotor(speed_pin, fwd_pin, bwd_pin) {
   this->encoder_interrupt_number = encoder_interrupt_number;
   this->encoder_pin = encoder_pin;
   this->tick_count = 0;
@@ -80,8 +80,7 @@ void BiDirectionalMotor::driveBwd(int target_speed) {
   analogWrite(this->speed_pin, target_speed);
 }
 
-BiDirectionalMotor::BiDirectionalMotor(int speed_pin, int fwd_pin, int bwd_pin, RgbLed_ *indicator_led) {
-  this->led = indicator_led;
+BiDirectionalMotor::BiDirectionalMotor(int speed_pin, int fwd_pin, int bwd_pin) {
   this->speed_pin = speed_pin;
   this->fwd_pin = fwd_pin;
   this->bwd_pin = bwd_pin;
@@ -97,7 +96,7 @@ void BiDirectionalMotor::fullStop() {
   analogWrite(this->speed_pin, 0);
 }
 
-RgbLed_ *right_led, *left_led;
+RgbLed_ *lamp_led;
 BiDirectionalMotor *right_motor, *left_motor;
 
 BiDirectionalMotorWithEncoders *right_encoded_motor, *left_encoded_motor;
@@ -119,19 +118,19 @@ void setup() {
   Serial.println("setup");
   pinMode(LED_PIN, OUTPUT);
   digitalWrite(LED_PIN, HIGH);
-  right_led = new RgbLedCommonAnode(3, 4, 4);
-  left_led = new RgbLedCommonAnode(5, 6, 6);
- 
+  lamp_led = new RgbLedCommonAnode(3, 4, 5);
+
+  lamp_led->setColor(Color::NONE);
+  lamp_led->delayCyclingColors(1000);
+
   Wire.begin(DEVICE_ADDRESS);
   Wire.onRequest(requestEvent);
   Wire.onReceive(receiveEvent);
   recvd = false;  
 
-  right_motor = new BiDirectionalMotor(9, 11, 12, right_led);
-  left_motor = new BiDirectionalMotor(10, 7, 8, left_led);
+  right_motor = new BiDirectionalMotor(9, 11, 12);
+  left_motor = new BiDirectionalMotor(10, 7, 8);
   Serial.println("/setup");
-  //Serial.send_now();
-  delay(1000);
   digitalWrite(LED_PIN, LOW);
 }
 
