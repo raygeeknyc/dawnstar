@@ -20,7 +20,7 @@ from multiprocessingloghandler import ParentMultiProcessingLogHandler
 WEB_SERVER_BASEPATH = "/var/www/html"
 IMAGE_FRAME_NAME = "FRAME.jpg"
 
-POLL_SECS = 1.0
+HEARTBEAT_SECS = 1.0
 IP_ADDRESS_RESOLUTION_DELAY_SECS = 1.0
 
 STEER_RIGHT_THRESHOLD = 0.75
@@ -29,7 +29,7 @@ MIN_GENERATIONS_TO_CENTER = 2
 
 from display import DisplayInfo, Display
 import imagecapture
-from imageanalyzer import ImageAnalyzer
+from imageanalyzer import NCSImageAnalyzer
 from ambulator import Ambulator
 from converser import Converser
 
@@ -50,8 +50,8 @@ class Dawnstar():
     self._screen = Display()
     self._ambulator = Ambulator()
     self._object_queue = object_queue
-    self.sequence_number = None
-    print('Ip address: {}'.format(self._get_ip_address()))
+    self.frame_sequence_number = None
+    logging.debug('Ip address: {}'.format(self._get_ip_address()))
 
   def startup(self):
     self._frame_consumer = threading.Thread(target = self._ingest_processed_frames, args=())
@@ -66,9 +66,9 @@ class Dawnstar():
   def _maintain_position(self):
     last_processed_frame = 0
     while not self._process_event.is_set():
-      if last_processed_frame != self.sequence_number:
+      if last_processed_frame != self.frame_sequence_number:
         logging.debug("New frame")
-        last_processed_frame = self.sequence_number
+        last_processed_frame = self.frame_sequence_number
         if not self.corrections_to_zone:
           logging.debug("Stop")
           self._ambulator.stop()
@@ -119,15 +119,15 @@ class Dawnstar():
         prev_ip_address = self.ip_address
         self._screen.refresh(info)
 
-  def _construct_info_image(self, frame, predictions, interesting_object):
+  def _construct_info_image(self, frame, detected_objects, interesting_object):
     image_to_decorate = frame.copy()
-    for prediction in predictions:
-      (pred_class, bounds), _, _, age = prediction
+    for object in detected_objects:
+      (object_class, bounds), _, _, age = object
       top_left, bottom_right = bounds
       (startX, startY) = (top_left[0], top_left[1])
       y = startY - 15 if startY - 15 > 15 else startY + 15
 
-      if prediction == interesting_object:
+      if object == interesting_object:
         cv2.rectangle(image_to_decorate, top_left, bottom_right,
           COLORS[0], 2)
       else:
@@ -135,11 +135,11 @@ class Dawnstar():
           COLORS[1], 1)
     image_for_display = cv2.flip(image_to_decorate, 0)
     if interesting_object:
-      (pred_class, bounds), _, _, age = interesting_object
+      (object_class, bounds), _, _, age = interesting_object
       top_left, bottom_right = bounds
       (startX, startY) = (top_left[0], top_left[1])
       y = startY - 15 if startY - 15 > 15 else startY + 15
-      label = "{}[{}]".format(pred_class, age)
+      label = "{}[{}]".format(object_class, age)
       cv2.putText(image_for_display, label, (startX, y),
         cv2.FONT_HERSHEY_SIMPLEX, 1, COLORS[0], 3)
     return image_for_display
@@ -149,7 +149,7 @@ class Dawnstar():
 
   def _ingest_processed_frames(self):
     logging.debug("object consumer started")
-    predictions = []
+    detected_objects = []
     while not self._process_event.is_set():
       try:
         frame = self._object_queue.get(False)
@@ -157,30 +157,30 @@ class Dawnstar():
         continue 
       self.frames += 1
       logging.debug("Frame[{}] received".format(self.frames))
-      previous_predictions = predictions
-      (sequence_number, base_image), predictions, interesting_object = frame
-      self.object_count = len(predictions)
+      previous_detected_objects = detected_objects
+      (sequence_number, base_image), detected_objects, interesting_object = frame
+      self.object_count = len(detected_objects)
       if interesting_object:
 	(_, self.tracked_bounds), _, self.tracked_area, self.tracked_generations = interesting_object
 	logging.debug("bounds: {}".format(self.tracked_bounds))
         self.tracked_objects = 1
-        self.sequence_number = sequence_number
-	self.tracked_zone = ImageAnalyzer.object_center_zone(interesting_object)
-	self.corrections_to_zone = ImageAnalyzer.object_corrections_to_center(interesting_object)
+        self.frame_sequence_number = sequence_number
+	self.tracked_zone = NCSImageAnalyzer.object_center_zone(interesting_object)
+	self.corrections_to_zone = NCSImageAnalyzer.object_corrections_to_center(interesting_object)
       else:
         self.tracked_objects = 0
 	self.tracked_zone = None
-        self.sequence_number = sequence_number
+        self.frame_sequence_number = sequence_number
 	self.corrections_to_zone = None
-      for (process_image, pred) in enumerate(predictions):
-        (pred_class, _), pred_confidence, _, tracked_generations = pred
-        logging.debug("Prediction class={}, confidence={}, age={}".format(pred_class, pred_confidence, tracked_generations))
-      debug_image = self._construct_info_image(base_image, predictions, interesting_object)
+      for (process_image, object) in enumerate(detected_objects):
+        (object_class, _), object_confidence, _, tracked_generations = object
+        logging.debug("Prediction class={}, confidence={}, age={}".format(object_class, object_confidence, tracked_generations))
+      debug_image = self._construct_info_image(base_image, detected_objects, interesting_object)
       self._write_frame_to_server(debug_image)
     logging.debug("Done consuming objects")
 
 def main():
-  image_producer = None
+  image_source = None
   image_analyzer = None
 
   process_event = multiprocessing.Event()
@@ -197,13 +197,13 @@ def main():
 
     robot = Dawnstar(process_event, object_queue)
 
-    image_analyzer = ImageAnalyzer(process_event, image_queue, object_queue, log_queue, logging.getLogger("").getEffectiveLevel())
+    image_analyzer = NCSImageAnalyzer(process_event, image_queue, object_queue, log_queue, logging.getLogger("").getEffectiveLevel())
     logging.debug("Starting image analyzer")
     image_analyzer.start()
 
-    image_producer = imagecapture.frame_provider(process_event, image_queue, log_queue, logging.getLogger("").getEffectiveLevel())
+    image_source = imagecapture.frame_provider(process_event, image_queue, log_queue, logging.getLogger("").getEffectiveLevel())
     logging.debug("Starting image producer")
-    image_producer.start()
+    image_source.start()
 
     converser = Converser(process_event, log_queue, logging.getLogger("").getEffectiveLevel())
     logging.debug("Starting converser")
@@ -220,7 +220,8 @@ def main():
       logging.info("Robot connected to the internet")
 
       while True:
-        time.sleep(POLL_SECS)
+        time.sleep(HEARTBEAT_SECS)
+	logging.debug("heartbeat")
     except KeyboardInterrupt, e:
         logging.info("Interrupted")
         process_event.set()
@@ -232,9 +233,9 @@ def main():
       logging.debug("Waiting for converser process")
       converser.join()
       logging.debug("converser process returned")
-    if image_producer:
+    if image_source:
       logging.debug("Waiting for image producer process")
-      image_producer.join()
+      image_source.join()
       logging.debug("image producer process returned")
     if image_analyzer:
       logging.debug("Waiting for analyzer process")

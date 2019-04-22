@@ -1,12 +1,6 @@
-_Pi = False
-_Pi = True
-
 import logging
 
 from ncs_detection.ncs_object_detector import NCSObjectClassifier
-
-# Import the packages we need for drawing and displaying images
-from PIL import Image, ImageDraw
 
 import multiprocessing
 from multiprocessingloghandler import ChildMultiProcessingLogHandler, ParentMultiProcessingLogHandler
@@ -20,7 +14,7 @@ import Queue
 import threading
 
 # This is how long to sleep in various threads between shutdown checks
-POLL_SECS = 0.1
+HEARTBEAT_SECS = 0.1
 
 
 # This is the lowest confidence score that the classifier should return
@@ -30,13 +24,18 @@ GRAPH_FILENAME = "ncs_detection/graphs/mobilenetgraph"
 
 class ImageAnalyzer(multiprocessing.Process):
     def __init__(self, event, image_queue, object_queue, log_queue, logging_level):
-        multiprocessing.Process.__init__(self)
+        super(ImageAnalyzer, self).__init__()
         self._exit = event
         self._log_queue = log_queue
         self._logging_level = logging_level
         self._image_queue = image_queue
         self._object_queue = object_queue
         self._image_queue = image_queue
+
+
+class NCSImageAnalyzer(ImageAnalyzer):
+    def __init__(self, event, image_queue, object_queue, log_queue, logging_level):
+        super(_NCSImageAnalyzer, self).__init__()
 	self._previous_predictions = []
 	self._classifier = NCSObjectClassifier(GRAPH_FILENAME, MININUM_CONSIDERED_CONFIDENCE)
 
