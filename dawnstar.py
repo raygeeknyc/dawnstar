@@ -149,33 +149,33 @@ class Dawnstar():
 
   def _ingest_processed_frames(self):
     logging.debug("object consumer started")
-    detected_objects = []
+    frame = None
     while not self._process_event.is_set():
+      if frame:
+        previous_detected_objects = frame.objects
       try:
         frame = self._object_queue.get(False)
       except Empty:
         continue 
       self.frames += 1
       logging.debug("Frame[{}] received".format(self.frames))
-      previous_detected_objects = detected_objects
-      (sequence_number, base_image), detected_objects, interesting_object = frame
-      self.object_count = len(detected_objects)
-      if interesting_object:
-	(_, self.tracked_bounds), _, self.tracked_area, self.tracked_generations = interesting_object
+      self.object_count = len(frame.objects)
+      if frame.interesting_object:
+	(_, self.tracked_bounds), _, self.tracked_area, self.tracked_generations = frame.interesting_object
 	logging.debug("bounds: {}".format(self.tracked_bounds))
         self.tracked_objects = 1
-        self.frame_sequence_number = sequence_number
-	self.tracked_zone = NCSImageAnalyzer.object_center_zone(interesting_object)
-	self.corrections_to_zone = NCSImageAnalyzer.object_corrections_to_center(interesting_object)
+        self.frame_sequence_number = frame.sequence_number
+	self.tracked_zone = NCSImageAnalyzer.object_center_zone(frame.interesting_object)
+	self.corrections_to_zone = NCSImageAnalyzer.object_corrections_to_center(frame.interesting_object)
       else:
         self.tracked_objects = 0
 	self.tracked_zone = None
-        self.frame_sequence_number = sequence_number
+        self.frame_sequence_number = frame.sequence_number
 	self.corrections_to_zone = None
-      for (process_image, object) in enumerate(detected_objects):
+      for (process_image, object) in enumerate(frame.objects):
         (object_class, _), object_confidence, _, tracked_generations = object
         logging.debug("Prediction class={}, confidence={}, age={}".format(object_class, object_confidence, tracked_generations))
-      debug_image = self._construct_info_image(base_image, detected_objects, interesting_object)
+      debug_image = self._construct_info_image(base_image, frame.objects, frame.interesting_object)
       self._write_frame_to_server(debug_image)
     logging.debug("Done consuming objects")
 

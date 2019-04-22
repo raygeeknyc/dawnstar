@@ -22,6 +22,14 @@ MININUM_CONSIDERED_CONFIDENCE = 0.5
 
 GRAPH_FILENAME = "ncs_detection/graphs/mobilenetgraph"
 
+class ProcessedFrame(object):
+    def __init__(self, image, sequence_number, objects, interesting_object)
+        self.image = image
+        self.sequence_number = sequence_number
+        self.objects = objects
+        self.interesting_object = interesting_object
+
+
 class ImageAnalyzer(multiprocessing.Process):
     def __init__(self, event, image_queue, object_queue, log_queue, logging_level):
         super(ImageAnalyzer, self).__init__()
@@ -79,7 +87,8 @@ class NCSImageAnalyzer(ImageAnalyzer):
        	if not self._exit.is_set():
         	logging.debug("Queuing processed image {}".format(frame_number))
         	frame_envelope = (frame_number, image)
-        	self._object_queue.put((frame_envelope, predictions, interesting_object))
+		frame = ProcessedFrame(image, frame_number, predictions, interesting_object)
+        	self._object_queue.put(frame)
 		self._previous_predictions = predictions
 
     def _get_images(self):
