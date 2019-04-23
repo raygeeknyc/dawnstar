@@ -31,6 +31,19 @@ class ProcessedFrame(object):
 
 
 class ImageAnalyzer(multiprocessing.Process):
+    UNKNOWN = 0
+    NCS = 1
+    TPU_ACCELERATOR = 2
+    
+    @staticmethod
+    def create(engine, event, image_queue, object_queue, log_queue, logging_level):
+        if engine == ImageAnalyzer.NCS:
+            return NCSImageAnalyzer(event, image_queue, object_queue, log_queue, logging_level):
+        elif engine == ImageAnalyzer.TPU_ACCELERATOR:
+            return EdgeTPUImageAnalyzer(event, image_queue, object_queue, log_queue, logging_level):
+        else:
+            raise ValueError('Unknown engine type {}'.format(engine))
+
     def __init__(self, event, image_queue, object_queue, log_queue, logging_level):
         super(ImageAnalyzer, self).__init__()
         self._exit = event
@@ -40,6 +53,9 @@ class ImageAnalyzer(multiprocessing.Process):
         self._object_queue = object_queue
         self._image_queue = image_queue
 
+
+class EdgeTPUImageAnalyzer(ImageAnalyzer):
+    pass
 
 class NCSImageAnalyzer(ImageAnalyzer):
     def __init__(self, event, image_queue, object_queue, log_queue, logging_level):

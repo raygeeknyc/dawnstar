@@ -29,7 +29,7 @@ MIN_GENERATIONS_TO_CENTER = 2
 
 from display import DisplayInfo, Display
 import imagecapture
-from imageanalyzer import NCSImageAnalyzer
+from imageanalyzer import ImageAnalyzer
 from ambulator import Ambulator
 from converser import Converser
 
@@ -165,8 +165,8 @@ class Dawnstar():
 	logging.debug("bounds: {}".format(self.tracked_bounds))
         self.tracked_objects = 1
         self.frame_sequence_number = frame.sequence_number
-	self.tracked_zone = NCSImageAnalyzer.object_center_zone(frame.interesting_object)
-	self.corrections_to_zone = NCSImageAnalyzer.object_corrections_to_center(frame.interesting_object)
+	self.tracked_zone = ImageAnalyzer.object_center_zone(frame.interesting_object)
+	self.corrections_to_zone = ImageAnalyzer.object_corrections_to_center(frame.interesting_object)
       else:
         self.tracked_objects = 0
 	self.tracked_zone = None
@@ -197,7 +197,7 @@ def main():
 
     robot = Dawnstar(process_event, object_queue)
 
-    image_analyzer = NCSImageAnalyzer(process_event, image_queue, object_queue, log_queue, logging.getLogger("").getEffectiveLevel())
+    image_analyzer = ImageAnalyzer.create(ImnageAnalyzer.NCS, process_event, image_queue, object_queue, log_queue, logging.getLogger("").getEffectiveLevel())
     logging.debug("Starting image analyzer")
     image_analyzer.start()
 
