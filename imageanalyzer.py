@@ -35,6 +35,11 @@ class ImageAnalyzer(multiprocessing.Process):
     NCS = 1
     TPU_ACCELERATOR = 2
     
+    Y_ZONES = 4
+    X_ZONES = 6
+
+    INTERESTING_CLASSES = {"cat":2, "dog":2, "person":1, "car":3, "bicycle":3, "bird":4}
+
     @staticmethod
     def create(engine, event, image_queue, object_queue, log_queue, logging_level):
         if engine == ImageAnalyzer.NCS:
@@ -53,15 +58,81 @@ class ImageAnalyzer(multiprocessing.Process):
         self._object_queue = object_queue
         self._image_queue = image_queue
 
+    @staticmethod
+    def center(box):
+        point1, point2 = box
+        return ((point2[0] + point1[0]) /2, (point2[1] + point1[1]) / 2)
+
+    @staticmethod
+    def area(box1, box2):
+        area = (box2[0] - box1[0]) * (box2[1] - box1[1])
+        return max(0, area)
+
+    @staticmethod
+    def zone_for_object(object):
+        center = NCSObjectClassifier.center(object[0][1])
+        x_zone = (center[0] / NCSObjectClassifier._X_ZONE_SIZE) + (1 if center[0] % NCSObjectClassifier._X_ZONE_SIZE else 0)
+        y_zone = (center[1] / NCSObjectClassifier._Y_ZONE_SIZE) + (1 if center[1] % NCSObjectClassifier._Y_ZONE_SIZE else 0)
+        logging.debug("Box: {} Zone: {}, {}".format(object[0], x_zone, y_zone))
+        return (x_zone, y_zone)
+
+    @staticmethod
+    def overlap_area(prediction_1, prediction_2):
+        (_, pred_1_box), _, _, _ = prediction_1
+        (_, pred_2_box), _, _, _ = prediction_2
+        overlap_region = ((max(pred_1_box[0][0], pred_2_box[0][0]),
+                max(pred_1_box[0][1], pred_2_box[0][1])),
+                (max(pred_1_box[1][0], pred_2_box[1][0]),
+                max(pred_1_box[1][1], pred_2_box[1][1])))
+        overlap_area = ImageAnalyzer.area(overlap_region[0], overlap_region[1])
+
+        return overlap_area
+
+    @staticmethod
+    def area_ratio(prediction_1, prediction_2):
+        _, _, _, pred_1_area, _ = prediction_1
+        _, _, _, pred_2_area, _ = prediction_2
+        relative_size = max(pred_area_1, pred_area_2) / min(pred_area_1, pred_area_2)
+        return relative_size
+
+    @staticmethod
+    def get_most_interesting_object(self, predictions):
+        prioritized_objects = {}
+        for object in predictions:
+                (_class, _bound_box), _confidence, _, _ = object
+                if _class not in NCSObjectClassifier.INTERESTING_CLASSES.keys():
+                        continue
+                if NCSObjectClassifier.INTERESTING_CLASSES[_class] not in prioritized_objects.keys():
+                        prioritized_objects[NCSObjectClassifier.INTERESTING_CLASSES[_class]] = [object]
+                else:
+                        prioritized_objects[NCSObjectClassifier.INTERESTING_CLASSES[_class]].append(object)
+        if not prioritized_objects:
+                return None
+        highest_priority = sorted(prioritized_objects.keys())[0]
+        highest_priority_objects = prioritized_objects[highest_priority]
+        max_area = 0
+        for important_object in highest_priority_objects:
+                (_, _), _, area, _  = important_object
+                if area > max_area:
+                        max_area = area
+                        largest_object = important_object
+        if max_area == 0:
+                return []
+        return largest_object
+
 
 class EdgeTPUImageAnalyzer(ImageAnalyzer):
     pass
 
 class NCSImageAnalyzer(ImageAnalyzer):
+        PREPROCESS_DIMENSIONS = (300, 300)
+        _X_ZONE_SIZE = PREPROCESS_DIMS[0] / X_ZONES
+        _Y_ZONE_SIZE = PREPROCESS_DIMS[1] / Y_ZONES
     def __init__(self, event, image_queue, object_queue, log_queue, logging_level):
         super(_NCSImageAnalyzer, self).__init__()
+
 	self._previous_predictions = []
-	self._classifier = NCSObjectClassifier(GRAPH_FILENAME, MININUM_CONSIDERED_CONFIDENCE)
+	self._classifier = NCSObjectClassifier(GRAPH_FILENAME, MININUM_CONSIDERED_CONFIDENCE, PREPROCESS_DIMENSIONS, INTERESTING_CLASSES)
 
     def _prediction_by_key(self, predictions, prediction_key):
         for prediction in predictions:

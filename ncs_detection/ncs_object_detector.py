@@ -6,13 +6,6 @@ import logging
 logging.getLogger().setLevel(logging.DEBUG)
 
 class NCSObjectClassifier(object):
-	# frame dimensions should be square
-	PREPROCESS_DIMS = (300, 300)
-	Y_ZONES = 4
-	X_ZONES = 6
-	_X_ZONE_SIZE = PREPROCESS_DIMS[0] / X_ZONES
-	_Y_ZONE_SIZE = PREPROCESS_DIMS[1] / Y_ZONES
-
         device = None
 
         @classmethod
@@ -39,10 +32,12 @@ class NCSObjectClassifier(object):
 		"diningtable", "dog", "horse", "motorbike", "person",
 		"pottedplant", "sheep", "sofa", "train", "tvmonitor")
 
-	INTERESTING_CLASSES = {"cat":2, "dog":2, "person":1, "car":3, "bicycle":3, "bird":4}
-
-        
-	def __init__(self, graph_filename, min_confidence):
+	def __init__(self, graph_filename, min_confidence, preprocessed_dimensions, interesting_classes_map):
+		# images should be square
+		if preprocessed_dimensions[0] != preprocessed_dimensions[1]:
+			raise ValueError("images should be square, not {}".format(preprocessed_dimensions))
+		self._interesting_classes = interesting_classes_map
+		self.preprocessed_dimensions = preprocessed_dimensions
 		self.graph_filename = graph_filename
 		self.confidence_threshold = min_confidence
                 if not self.__class__.device:
@@ -145,46 +140,9 @@ class NCSObjectClassifier(object):
 		return (x, y)
 
 	@staticmethod
-	def zone_for_object(object):
-		center = NCSObjectClassifier.center(object[0][1])
-		x_zone = (center[0] / NCSObjectClassifier._X_ZONE_SIZE) + (1 if center[0] % NCSObjectClassifier._X_ZONE_SIZE else 0)
-		y_zone = (center[1] / NCSObjectClassifier._Y_ZONE_SIZE) + (1 if center[1] % NCSObjectClassifier._Y_ZONE_SIZE else 0)
-		logging.debug("Box: {} Zone: {}, {}".format(object[0], x_zone, y_zone))
-		return (x_zone, y_zone)
-
-	@staticmethod
-	def center(box):
-		point1, point2 = box
-		return ((point2[0] + point1[0]) /2, (point2[1] + point1[1]) / 2)
-
-	@staticmethod
-	def area(box1, box2):
-		area = (box2[0] - box1[0]) * (box2[1] - box1[1])
-		return max(0, area)
-
-	@staticmethod
-	def overlap_area(prediction_1, prediction_2):
-		(_, pred_1_box), _, _, _ = prediction_1
-		(_, pred_2_box), _, _, _ = prediction_2
-		overlap_region = ((max(pred_1_box[0][0], pred_2_box[0][0]),
-			max(pred_1_box[0][1], pred_2_box[0][1])),
-			(max(pred_1_box[1][0], pred_2_box[1][0]),
-			max(pred_1_box[1][1], pred_2_box[1][1])))
-		overlap_area = NCSObjectClassifier.area(overlap_region[0], overlap_region[1])
-
-		return overlap_area
-
-	@staticmethod
-	def area_ratio(prediction_1, prediction_2):
-		_, _, _, pred_1_area, _ = prediction_1
-		_, _, _, pred_2_area, _ = prediction_2
-		relative_size = max(pred_area_1, pred_area_2) / min(pred_area_1, pred_area_2)
-		return relative_size
-
-	@staticmethod
 	def preprocess_image(input_image):
 		# preprocess the image
-		preprocessed = cv2.resize(input_image, NCSObjectClassifier.PREPROCESS_DIMS)
+		preprocessed = cv2.resize(input_image, self.preprocessed_dimensions)
 		preprocessed = preprocessed - 127.5
 		preprocessed = preprocessed * 0.007843
 		preprocessed = preprocessed.astype(np.float16)
@@ -196,12 +154,12 @@ class NCSObjectClassifier(object):
 		prioritized_objects = {}
 		for object in predictions:
 			(_class, _bound_box), _confidence, _, _ = object
-			if _class not in NCSObjectClassifier.INTERESTING_CLASSES.keys():
+			if _class not in self._interesting_classes.keys():
 				continue
-			if NCSObjectClassifier.INTERESTING_CLASSES[_class] not in prioritized_objects.keys():
-				prioritized_objects[NCSObjectClassifier.INTERESTING_CLASSES[_class]] = [object]
+			if self._interesting_classes[_class] not in prioritized_objects.keys():
+				prioritized_objects[self._interesting_classes[_class]] = [object]
 			else:
-				prioritized_objects[NCSObjectClassifier.INTERESTING_CLASSES[_class]].append(object)
+				prioritized_objects[self._interesting_classes[_class]].append(object)
 		if not prioritized_objects:
 			return None
 		highest_priority = sorted(prioritized_objects.keys())[0]
