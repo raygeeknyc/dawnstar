@@ -160,6 +160,7 @@ class Dawnstar():
       self.frames += 1
       logging.debug("Frame[{}] received".format(self.frames))
       self.object_count = len(frame.objects)
+      (_, base_image),_ ,_ = frame
       if frame.interesting_object:
 	(_, self.tracked_bounds), _, self.tracked_area, self.tracked_generations = frame.interesting_object
 	logging.debug("bounds: {}".format(self.tracked_bounds))
@@ -172,7 +173,7 @@ class Dawnstar():
 	self.tracked_zone = None
         self.frame_sequence_number = frame.sequence_number
 	self.corrections_to_zone = None
-      for (process_image, object) in enumerate(frame.objects):
+      for (processed_image, object) in enumerate(frame.objects):
         (object_class, _), object_confidence, _, tracked_generations = object
         logging.debug("Prediction class={}, confidence={}, age={}".format(object_class, object_confidence, tracked_generations))
       debug_image = self._construct_info_image(base_image, frame.objects, frame.interesting_object)
@@ -197,7 +198,7 @@ def main():
 
     robot = Dawnstar(process_event, object_queue)
 
-    image_analyzer = ImageAnalyzer.create(ImnageAnalyzer.NCS, process_event, image_queue, object_queue, log_queue, logging.getLogger("").getEffectiveLevel())
+    image_analyzer = ImageAnalyzer.create(ImageAnalyzer.NCS, process_event, image_queue, object_queue, log_queue, logging.getLogger("").getEffectiveLevel())
     logging.debug("Starting image analyzer")
     image_analyzer.start()
 

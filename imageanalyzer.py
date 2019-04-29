@@ -16,6 +16,12 @@ import threading
 # This is how long to sleep in various threads between shutdown checks
 HEARTBEAT_SECS = 0.1
 
+# This is the number of zones that we place objects into on each axis
+Y_ZONES = 4
+X_ZONES = 6
+
+# The classes of objects that we track, mapped to their priority, 1==highest
+INTERESTING_CLASSES = {"cat":2, "dog":2, "person":1, "car":3, "bicycle":3, "bird":4}
 
 # This is the lowest confidence score that the classifier should return
 MININUM_CONSIDERED_CONFIDENCE = 0.5
@@ -23,7 +29,7 @@ MININUM_CONSIDERED_CONFIDENCE = 0.5
 GRAPH_FILENAME = "ncs_detection/graphs/mobilenetgraph"
 
 class ProcessedFrame(object):
-    def __init__(self, image, sequence_number, objects, interesting_object)
+    def __init__(self, image, sequence_number, objects, interesting_object):
         self.image = image
         self.sequence_number = sequence_number
         self.objects = objects
@@ -35,17 +41,12 @@ class ImageAnalyzer(multiprocessing.Process):
     NCS = 1
     TPU_ACCELERATOR = 2
     
-    Y_ZONES = 4
-    X_ZONES = 6
-
-    INTERESTING_CLASSES = {"cat":2, "dog":2, "person":1, "car":3, "bicycle":3, "bird":4}
-
     @staticmethod
     def create(engine, event, image_queue, object_queue, log_queue, logging_level):
         if engine == ImageAnalyzer.NCS:
-            return NCSImageAnalyzer(event, image_queue, object_queue, log_queue, logging_level):
+            return _NCSImageAnalyzer(event, image_queue, object_queue, log_queue, logging_level)
         elif engine == ImageAnalyzer.TPU_ACCELERATOR:
-            return EdgeTPUImageAnalyzer(event, image_queue, object_queue, log_queue, logging_level):
+            return _EdgeTPUImageAnalyzer(event, image_queue, object_queue, log_queue, logging_level)
         else:
             raise ValueError('Unknown engine type {}'.format(engine))
 
@@ -121,18 +122,18 @@ class ImageAnalyzer(multiprocessing.Process):
         return largest_object
 
 
-class EdgeTPUImageAnalyzer(ImageAnalyzer):
+class _EdgeTPUImageAnalyzer(ImageAnalyzer):
     pass
 
-class NCSImageAnalyzer(ImageAnalyzer):
-        PREPROCESS_DIMENSIONS = (300, 300)
-        _X_ZONE_SIZE = PREPROCESS_DIMS[0] / X_ZONES
-        _Y_ZONE_SIZE = PREPROCESS_DIMS[1] / Y_ZONES
+class _NCSImageAnalyzer(ImageAnalyzer):
+    PREPROCESS_DIMENSIONS = (300, 300)
+    _X_ZONE_SIZE = PREPROCESS_DIMENSIONS[0] / X_ZONES
+    _Y_ZONE_SIZE = PREPROCESS_DIMENSIONS[1] / Y_ZONES
     def __init__(self, event, image_queue, object_queue, log_queue, logging_level):
-        super(_NCSImageAnalyzer, self).__init__()
+        super(_NCSImageAnalyzer, self).__init__(event, image_queue, object_queue, log_queue, logging_level)
 
 	self._previous_predictions = []
-	self._classifier = NCSObjectClassifier(GRAPH_FILENAME, MININUM_CONSIDERED_CONFIDENCE, PREPROCESS_DIMENSIONS, INTERESTING_CLASSES)
+	self._classifier = NCSObjectClassifier(GRAPH_FILENAME, MININUM_CONSIDERED_CONFIDENCE, self.__class__.PREPROCESS_DIMENSIONS, INTERESTING_CLASSES)
 
     def _prediction_by_key(self, predictions, prediction_key):
         for prediction in predictions:

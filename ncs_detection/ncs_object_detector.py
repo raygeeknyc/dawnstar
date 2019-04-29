@@ -139,8 +139,7 @@ class NCSObjectClassifier(object):
 
 		return (x, y)
 
-	@staticmethod
-	def preprocess_image(input_image):
+	def preprocess_image(self, input_image):
 		# preprocess the image
 		preprocessed = cv2.resize(input_image, self.preprocessed_dimensions)
 		preprocessed = preprocessed - 127.5
