@@ -58,6 +58,7 @@ class ImageAnalyzer(multiprocessing.Process):
         self._image_queue = image_queue
         self._object_queue = object_queue
         self._image_queue = image_queue
+	self._previous_detected_objects = []
 
     @staticmethod
     def center(box):
@@ -65,8 +66,8 @@ class ImageAnalyzer(multiprocessing.Process):
         return ((point2[0] + point1[0]) /2, (point2[1] + point1[1]) / 2)
 
     @staticmethod
-    def area(box1, box2):
-        area = (box2[0] - box1[0]) * (box2[1] - box1[1])
+    def area(box_point1, box_point2):
+        area = (box_point2[0] - box_point1[0]) * (box_point2[1] - box_point1[1])
         return max(0, area)
 
     @staticmethod
@@ -132,7 +133,6 @@ class _NCSImageAnalyzer(ImageAnalyzer):
     def __init__(self, event, image_queue, object_queue, log_queue, logging_level):
         super(_NCSImageAnalyzer, self).__init__(event, image_queue, object_queue, log_queue, logging_level)
 
-	self._previous_predictions = []
 	self._classifier = NCSObjectClassifier(GRAPH_FILENAME, MININUM_CONSIDERED_CONFIDENCE, self.__class__.PREPROCESS_DIMENSIONS, INTERESTING_CLASSES)
 
     def _prediction_by_key(self, predictions, prediction_key):
@@ -161,23 +161,34 @@ class _NCSImageAnalyzer(ImageAnalyzer):
                 raise ValueError("Missing current prediction")
             current_object[3] += previous_object[3]
 
+    def _get_likely_objects(self, image):
+	confident_predictions = self._classifier.get_confident_predictions(image)
+	likely_objects = []
+	object_generations_tracked = 1
+	for prediction in confident_predictions:
+		object_bounds = prediction[1]
+		object_area = self.area(object_bounds[0], object_bounds[1])
+		likely_object = [(prediction[0], object_bounds), prediction[2], object_area, object_generations_tracked]
+		likely_objects.append(likely_object)
+	return likely_objects
+	
     def _process_image(self, frame_number, image):
         logging.debug("Processing image {}".format(frame_number))
-	predictions = self._classifier.get_likely_objects(image)
-        logging.debug("predictions : {}".format(predictions))
-        logging.debug("_previous_predictions : {}".format(self._previous_predictions))
-	persistent_object_keys = self._classifier.rank_possible_matches(predictions, self._previous_predictions)
+	detected_objects = self._get_likely_objects(image)
+        logging.debug("objects : {}".format(detected_objects))
+        logging.debug("_previous_detected_objects : {}".format(self._previous_detected_objects))
+	persistent_object_keys = self._classifier.rank_possible_matches(detected_objects, self._previous_detected_objects)
         logging.debug("Matches: {}".format(persistent_object_keys))
-        logging.debug("_previous_predictions : {}".format(self._previous_predictions))
-	self._apply_matches(persistent_object_keys, predictions, self._previous_predictions)
-	logging.debug("Objects: {}, previous: {}, matches: {}".format(len(predictions), len(self._previous_predictions), len(persistent_object_keys)))
-	interesting_object = self._classifier.get_most_interesting_object(predictions)
+        logging.debug("_previous_detected_objects : {}".format(self._previous_detected_objects))
+	self._apply_matches(persistent_object_keys, detected_objects, self._previous_detected_objects)
+	logging.debug("Objects: {}, previous: {}, matches: {}".format(len(detected_objects), len(self._previous_detected_objects), len(persistent_object_keys)))
+	interesting_object = self._classifier.get_most_interesting_object(detected_objects)
        	if not self._exit.is_set():
         	logging.debug("Queuing processed image {}".format(frame_number))
         	frame_envelope = (frame_number, image)
-		frame = ProcessedFrame(image, frame_number, predictions, interesting_object)
+		frame = ProcessedFrame(image, frame_number, detected_objects, interesting_object)
         	self._object_queue.put(frame)
-		self._previous_predictions = predictions
+		self._previous_detected_objects = detected_objects
 
     def _get_images(self):
         logging.debug("image consumer started")

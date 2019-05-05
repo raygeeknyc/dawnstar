@@ -173,7 +173,7 @@ class NCSObjectClassifier(object):
 			return []
 		return largest_object
 
-	def get_likely_objects(self, image):
+	def get_confident_predictions(self, image):
 		# preprocess the image
 		image = self.preprocess_image(image)
 
@@ -216,13 +216,7 @@ class NCSObjectClassifier(object):
 
 				pred_class = NCSObjectClassifier.CLASSES[int(output[base_index + 1])]
 				pred_boxpts = ((x1, y1), (x2, y2))
-			        pred_area = NCSObjectClassifier.area(pred_boxpts[0], pred_boxpts[1])
-				pred_generations_tracked = 1
-
-				# create prediction tuple and append the prediction to the
-				# predictions list, key, values...
-				prediction = [(pred_class, pred_boxpts), pred_conf, pred_area, pred_generations_tracked]
-				predictions.append(prediction)
+				predictions.append((pred_class, pred_boxpts, pred_conf))
 
 		# return the list of predictions to the calling function
 		return predictions
