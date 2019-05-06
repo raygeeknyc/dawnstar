@@ -60,85 +60,6 @@ class NCSObjectClassifier(object):
 		logging.debug("allocating the graph on the NCS...")
 		self._graph = self.__class__.device.AllocateGraph(graph_in_memory)
 
-	@staticmethod
-	def rank_possible_matches(primary_object_set, secondary_object_set):
-		eligible_matches = dict()
-		for prediction in primary_object_set:
-			key_primary, _, _, _ = prediction
-			(primary_class, primary_box) = key_primary
-			for potential_match in secondary_object_set:
-				key_secondary, _, _, _ = potential_match
-				(secondary_class, secondary_box) = key_secondary
-				if secondary_class != primary_class:
-					continue
-				overlapping_area = NCSObjectClassifier.overlap_area(prediction, potential_match)
-				if overlapping_area:
-					eligible_matches[(key_primary, key_secondary)] = overlapping_area
-		# At this point we have all possible matches and a score for each
-		matched_primaries = []
-		matched_secondaries = []
-		best_matches = []
-		for match_key, rank in sorted(eligible_matches.iteritems(), key=lambda (k,v): (v,k), reverse=True):
-			proposed_primary, proposed_secondary = match_key
-			if proposed_primary in matched_primaries:
-				continue
-			if proposed_secondary in matched_secondaries:
-				continue
-			best_matches.append(match_key)
-			matched_primaries.append(proposed_primary)
-			matched_secondaries.append(proposed_secondary)
-		return best_matches
-
-	@staticmethod
-	def apply_tracked_continuity(matched_predictions):
-		for primary, secondary in matched_predictions:
-			primary[4] += secondary[4]
-
-	@staticmethod
-	def correction_for_object(object):
-		(_, box), _, _, _ = object
-		(x0, y0),(x1, y1) = box
-		x_correction = 0
-		y_correction = 0
-		for zone in range(0, NCSObjectClassifier.X_ZONES):
-			x_correction += round(NCSObjectClassifier.weight_of_zone_for_segment(x0, x1, zone, NCSObjectClassifier.X_ZONES, NCSObjectClassifier._X_ZONE_SIZE), 2)
-		for zone in range(0, NCSObjectClassifier.Y_ZONES):
-			y_correction += round(NCSObjectClassifier.weight_of_zone_for_segment(y0, y1, zone, NCSObjectClassifier.Y_ZONES, NCSObjectClassifier._Y_ZONE_SIZE), 2)
-		return (x_correction, y_correction)
-
-	@staticmethod
-	def weight_of_zone_for_segment(start, end, zone, zones, zone_length):
-		if (zone+1)*zone_length < start: return 0
-		elif zone*zone_length > end: return 0
-		if zone == 0: zone_weight = 2.0
-		elif zone == zones-1: zone_weight = -2.0
-		elif zone == (zones-1)/2: zone_weight = 0.0
-		elif zone == zones/2: zone_weight = 0.0
-		elif zone < (zones-1)/2: zone_weight = 1.0
-		elif zone > zones/2: zone_weight = -1.0
-		segment_in_zone = (min(end, (zone+1)*zone_length)-max(start, zone*zone_length))
-		return zone_weight * ((1.0 * segment_in_zone) / (end - start))
-
-	@staticmethod
-	def correction_for_zone(zone):
-		if zone[0] > NCSObjectClassifier.X_ZONES:
-			raise ValueError("Bad X zone calculation")
-		if zone[1] > NCSObjectClassifier.Y_ZONES:
-			raise ValueError("Bad Y zone calculation")
-		x = -9999
-		if zone[0] == 1: x = -2
-		elif zone[0] == 2: x = -1
-		elif zone[0] in (3,4): x = 0
-		elif zone[0] == 5: x = 1
-		elif zone[0] == 6: x = 2
-
-		y = -9999
-		if zone[1] == 1: y = -1
-		elif zone[1] in (2,3): y = 0
-		elif zone[1] == 4: y = 1
-
-		return (x, y)
-
 	def preprocess_image(self, input_image):
 		# preprocess the image
 		preprocessed = cv2.resize(input_image, self.preprocessed_dimensions)
@@ -148,30 +69,6 @@ class NCSObjectClassifier(object):
 
 		# return the image to the calling function
 		return preprocessed
-
-	def get_most_interesting_object(self, predictions):
-		prioritized_objects = {}
-		for object in predictions:
-			(_class, _bound_box), _confidence, _, _ = object
-			if _class not in self._interesting_classes.keys():
-				continue
-			if self._interesting_classes[_class] not in prioritized_objects.keys():
-				prioritized_objects[self._interesting_classes[_class]] = [object]
-			else:
-				prioritized_objects[self._interesting_classes[_class]].append(object)
-		if not prioritized_objects:
-			return None
-		highest_priority = sorted(prioritized_objects.keys())[0]
-		highest_priority_objects = prioritized_objects[highest_priority]
-		max_area = 0
-		for important_object in highest_priority_objects:
-			(_, _), _, area, _  = important_object
-			if area > max_area:
-				max_area = area
-				largest_object = important_object
-		if max_area == 0:
-			return []
-		return largest_object
 
 	def get_confident_predictions(self, image):
 		# preprocess the image
