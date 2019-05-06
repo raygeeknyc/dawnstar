@@ -32,11 +32,10 @@ class NCSObjectClassifier(object):
 		"diningtable", "dog", "horse", "motorbike", "person",
 		"pottedplant", "sheep", "sofa", "train", "tvmonitor")
 
-	def __init__(self, graph_filename, min_confidence, preprocessed_dimensions, interesting_classes_map):
+	def __init__(self, graph_filename, min_confidence, preprocessed_dimensions):
 		# images should be square
 		if preprocessed_dimensions[0] != preprocessed_dimensions[1]:
 			raise ValueError("images should be square, not {}".format(preprocessed_dimensions))
-		self._interesting_classes = interesting_classes_map
 		self.preprocessed_dimensions = preprocessed_dimensions
 		self.graph_filename = graph_filename
 		self.confidence_threshold = min_confidence

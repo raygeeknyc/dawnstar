@@ -98,31 +98,6 @@ class ImageAnalyzer(multiprocessing.Process):
         return relative_size
 
     @staticmethod
-    def get_most_interesting_object(self, predictions):
-        prioritized_objects = {}
-        for object in predictions:
-                (_class, _bound_box), _confidence, _, _ = object
-                if _class not in NCSObjectClassifier.INTERESTING_CLASSES.keys():
-                        continue
-                if NCSObjectClassifier.INTERESTING_CLASSES[_class] not in prioritized_objects.keys():
-                        prioritized_objects[NCSObjectClassifier.INTERESTING_CLASSES[_class]] = [object]
-                else:
-                        prioritized_objects[NCSObjectClassifier.INTERESTING_CLASSES[_class]].append(object)
-        if not prioritized_objects:
-                return None
-        highest_priority = sorted(prioritized_objects.keys())[0]
-        highest_priority_objects = prioritized_objects[highest_priority]
-        max_area = 0
-        for important_object in highest_priority_objects:
-                (_, _), _, area, _  = important_object
-                if area > max_area:
-                        max_area = area
-                        largest_object = important_object
-        if max_area == 0:
-                return []
-        return largest_object
-
-    @staticmethod
     def rank_possible_matches(primary_object_set, secondary_object_set):
         eligible_matches = dict()
         for prediction in primary_object_set:
@@ -197,16 +172,17 @@ class ImageAnalyzer(multiprocessing.Process):
             y_correction += round(NCSObjectClassifier.weight_of_zone_for_segment(y0, y1, zone, NCSObjectClassifier.Y_ZONES, NCSObjectClassifier._Y_ZONE_SIZE), 2)
         return (x_correction, y_correction)
 
-    def get_most_interesting_object(self, predictions):
+    @staticmethod
+    def get_most_interesting_object(predictions):
         prioritized_objects = {}
         for object in predictions:
             (_class, _bound_box), _confidence, _, _ = object
-            if _class not in self._interesting_classes.keys():
+            if _class not in self.__class__.INTERESTING_CLASSES.keys():
                 continue
-            if self._interesting_classes[_class] not in prioritized_objects.keys():
-                prioritized_objects[self._interesting_classes[_class]] = [object]
+            if self.INTERESTING_CLASSES[_class] not in prioritized_objects.keys():
+                prioritized_objects[self.__class__.INTERESTING_CLASSES[_class]] = [object]
             else:
-                prioritized_objects[self._interesting_classes[_class]].append(object)
+                prioritized_objects[self.__class__.INTERESTING_CLASSES[_class]].append(object)
         if not prioritized_objects:
             return None
         highest_priority = sorted(prioritized_objects.keys())[0]
@@ -232,7 +208,7 @@ class _NCSImageAnalyzer(ImageAnalyzer):
     def __init__(self, event, image_queue, object_queue, log_queue, logging_level):
         super(_NCSImageAnalyzer, self).__init__(event, image_queue, object_queue, log_queue, logging_level)
 
-	self._classifier = NCSObjectClassifier(GRAPH_FILENAME, MININUM_CONSIDERED_CONFIDENCE, self.__class__.PREPROCESS_DIMENSIONS, INTERESTING_CLASSES)
+	self._classifier = NCSObjectClassifier(GRAPH_FILENAME, MININUM_CONSIDERED_CONFIDENCE, self.__class__.PREPROCESS_DIMENSIONS)
 
     def _prediction_by_key(self, predictions, prediction_key):
         for prediction in predictions:
