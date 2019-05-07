@@ -6,31 +6,28 @@ import logging
 logging.getLogger().setLevel(logging.DEBUG)
 
 class NCSObjectClassifier(object):
-        device = None
+	# initialize the list of class labels our network was trained to
+	# detect
+	CLASSES = ("background", "aeroplane", "bicycle", "bird",
+		"boat", "bottle", "bus", "car", "cat", "chair", "cow",
+		"diningtable", "dog", "horse", "motorbike", "person",
+		"pottedplant", "sheep", "sofa", "train", "tvmonitor")
 
-        @classmethod
-	def _init_NCS_device(cls):
+	def _init_NCS_device(self):
 		# grab a list of all NCS devices plugged in to USB
-		print("finding NCS devices...")
+		logging.debug("finding NCS devices...")
 		devices = mvnc.EnumerateDevices()
 
 		# if no devices found, exit the script
 		if len(devices) == 0:
 			raise Exception("No devices found. Please plug in a NCS")
 
-		print("found {} devices. device0 will be used. "
+		logging.debug("found {} devices. device0 will be used. "
 			"opening device0...".format(len(devices)))
 		device = mvnc.Device(devices[0])
 		device.OpenDevice()
-		print("device opened")
-		cls.device = device
-
-	# initialize the list of class labels our network was trained to
-	# detect, then generate a set of bounding box colors for each class
-	CLASSES = ("background", "aeroplane", "bicycle", "bird",
-		"boat", "bottle", "bus", "car", "cat", "chair", "cow",
-		"diningtable", "dog", "horse", "motorbike", "person",
-		"pottedplant", "sheep", "sofa", "train", "tvmonitor")
+		logging.debug("device opened")
+		self.device = device
 
 	def __init__(self, graph_filename, min_confidence, preprocessed_dimensions):
 		# images should be square
@@ -39,15 +36,8 @@ class NCSObjectClassifier(object):
 		self.preprocessed_dimensions = preprocessed_dimensions
 		self.graph_filename = graph_filename
 		self.confidence_threshold = min_confidence
-                if not self.__class__.device:
-			self.__class__._init_NCS_device()
+		self._init_NCS_device()
 		self._init_graph()
-
-	def cleanup(self):
-		# clean up the graph and device
-		self._graph.DeallocateGraph()
-		self.__class__.device.CloseDevice()
-		self.__class__.device = None
 
 	def _init_graph(self):
 		# open the CNN graph file
@@ -57,7 +47,7 @@ class NCSObjectClassifier(object):
 
 		# load the graph into the NCS
 		logging.debug("allocating the graph on the NCS...")
-		self._graph = self.__class__.device.AllocateGraph(graph_in_memory)
+		self._graph = self.device.AllocateGraph(graph_in_memory)
 
 	def preprocess_image(self, input_image):
 		# preprocess the image
@@ -116,3 +106,9 @@ class NCSObjectClassifier(object):
 
 		# return the list of predictions to the calling function
 		return predictions
+
+	def cleanup(self):
+		# clean up the graph and device
+		self._graph.DeallocateGraph()
+		self.__class__.device.CloseDevice()
+		self.device = None
