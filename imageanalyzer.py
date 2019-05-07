@@ -72,9 +72,9 @@ class ImageAnalyzer(multiprocessing.Process):
 
     @staticmethod
     def zone_for_object(object):
-        center = NCSObjectClassifier.center(object[0][1])
-        x_zone = (center[0] / NCSObjectClassifier._X_ZONE_SIZE) + (1 if center[0] % NCSObjectClassifier._X_ZONE_SIZE else 0)
-        y_zone = (center[1] / NCSObjectClassifier._Y_ZONE_SIZE) + (1 if center[1] % NCSObjectClassifier._Y_ZONE_SIZE else 0)
+        center = center(object[0][1])
+        x_zone = (center[0] / _X_ZONE_SIZE) + (1 if center[0] % _X_ZONE_SIZE else 0)
+        y_zone = (center[1] / _Y_ZONE_SIZE) + (1 if center[1] % _Y_ZONE_SIZE else 0)
         logging.debug("Box: {} Zone: {}, {}".format(object[0], x_zone, y_zone))
         return (x_zone, y_zone)
 
@@ -108,7 +108,7 @@ class ImageAnalyzer(multiprocessing.Process):
                 (secondary_class, secondary_box) = key_secondary
                 if secondary_class != primary_class:
                     continue
-                overlapping_area = NCSObjectClassifier.overlap_area(prediction, potential_match)
+                overlapping_area = overlap_area(prediction, potential_match)
                 if overlapping_area:
                     eligible_matches[(key_primary, key_secondary)] = overlapping_area
         # At this point we have all possible matches and a score for each
@@ -141,9 +141,9 @@ class ImageAnalyzer(multiprocessing.Process):
 
     @staticmethod
     def correction_for_zone(zone):
-        if zone[0] > NCSObjectClassifier.X_ZONES:
+        if zone[0] > X_ZONES:
             raise ValueError("Bad X zone calculation")
-        if zone[1] > NCSObjectClassifier.Y_ZONES:
+        if zone[1] > Y_ZONES:
             raise ValueError("Bad Y zone calculation")
         x = -9999
         if zone[0] == 1: x = -2
@@ -166,10 +166,10 @@ class ImageAnalyzer(multiprocessing.Process):
         (x0, y0),(x1, y1) = box
         x_correction = 0
         y_correction = 0
-        for zone in range(0, NCSObjectClassifier.X_ZONES):
-            x_correction += round(NCSObjectClassifier.weight_of_zone_for_segment(x0, x1, zone, NCSObjectClassifier.X_ZONES, NCSObjectClassifier._X_ZONE_SIZE), 2)
-        for zone in range(0, NCSObjectClassifier.Y_ZONES):
-            y_correction += round(NCSObjectClassifier.weight_of_zone_for_segment(y0, y1, zone, NCSObjectClassifier.Y_ZONES, NCSObjectClassifier._Y_ZONE_SIZE), 2)
+        for zone in range(0, X_ZONES):
+            x_correction += round(weight_of_zone_for_segment(x0, x1, zone, X_ZONES, _X_ZONE_SIZE), 2)
+        for zone in range(0, Y_ZONES):
+            y_correction += round(weight_of_zone_for_segment(y0, y1, zone, Y_ZONES, _Y_ZONE_SIZE), 2)
         return (x_correction, y_correction)
 
     @staticmethod
