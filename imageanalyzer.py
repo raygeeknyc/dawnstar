@@ -42,13 +42,13 @@ class ImageAnalyzer(multiprocessing.Process):
     TPU_ACCELERATOR = 2
     
     @staticmethod
-    def create(engine, event, image_queue, object_queue, log_queue, logging_level):
-        if engine == ImageAnalyzer.NCS:
+    def create(detection_engine, event, image_queue, object_queue, log_queue, logging_level):
+        if detection_engine == ImageAnalyzer.NCS:
             return _NCSImageAnalyzer(event, image_queue, object_queue, log_queue, logging_level)
-        elif engine == ImageAnalyzer.TPU_ACCELERATOR:
+        elif detection_engine == ImageAnalyzer.TPU_ACCELERATOR:
             return _EdgeTPUImageAnalyzer(event, image_queue, object_queue, log_queue, logging_level)
         else:
-            raise ValueError('Unknown engine type {}'.format(engine))
+            raise ValueError('Unknown Detection engine type {}'.format(engine))
 
     def __init__(self, event, image_queue, object_queue, log_queue, logging_level):
         super(ImageAnalyzer, self).__init__()
@@ -59,6 +59,12 @@ class ImageAnalyzer(multiprocessing.Process):
         self._object_queue = object_queue
         self._image_queue = image_queue
 	self._previous_detected_objects = []
+	self._classifier = None
+
+    def _cleanup(self):
+        logging.debug("Cleaning up")
+        self._object_queue.close()
+        self._classifier.cleanup()
 
     @staticmethod
     def center(box):
@@ -173,9 +179,9 @@ class ImageAnalyzer(multiprocessing.Process):
         return (x_correction, y_correction)
 
     @staticmethod
-    def get_most_interesting_object(predictions):
+    def get_most_interesting_object(objects):
         prioritized_objects = {}
-        for object in predictions:
+        for object in objects:
             (_class, _bound_box), _confidence, _, _ = object
             if _class not in self.__class__.INTERESTING_CLASSES.keys():
                 continue
@@ -251,12 +257,12 @@ class _NCSImageAnalyzer(ImageAnalyzer):
 	detected_objects = self._get_likely_objects(image)
         logging.debug("objects : {}".format(detected_objects))
         logging.debug("_previous_detected_objects : {}".format(self._previous_detected_objects))
-	persistent_object_keys = self._classifier.rank_possible_matches(detected_objects, self._previous_detected_objects)
+	persistent_object_keys = self.__class__.rank_possible_matches(detected_objects, self._previous_detected_objects)
         logging.debug("Matches: {}".format(persistent_object_keys))
         logging.debug("_previous_detected_objects : {}".format(self._previous_detected_objects))
 	self._apply_matches(persistent_object_keys, detected_objects, self._previous_detected_objects)
 	logging.debug("Objects: {}, previous: {}, matches: {}".format(len(detected_objects), len(self._previous_detected_objects), len(persistent_object_keys)))
-	interesting_object = self._classifier.get_most_interesting_object(detected_objects)
+	interesting_object = self._class__.get_most_interesting_object(detected_objects)
        	if not self._exit.is_set():
         	logging.debug("Queuing processed image {}".format(frame_number))
         	frame_envelope = (frame_number, image)
@@ -287,10 +293,6 @@ class _NCSImageAnalyzer(ImageAnalyzer):
                 logging.exception("error consuming images")
         logging.debug("Stopped image consumer")
  
-    def _cleanup(self):
-        logging.debug("Cleaning up")
-        self._object_queue.close()
-
     def _init_logging(self):
         handler = ChildMultiProcessingLogHandler(self._log_queue)
         logging.getLogger(str(os.getpid())).addHandler(handler)

@@ -27,7 +27,7 @@ class NCSObjectClassifier(object):
 		device = mvnc.Device(devices[0])
 		device.OpenDevice()
 		logging.debug("device opened")
-		self.device = device
+		self._device = device
 
 	def __init__(self, graph_filename, min_confidence, preprocessed_dimensions):
 		# images should be square
@@ -47,9 +47,9 @@ class NCSObjectClassifier(object):
 
 		# load the graph into the NCS
 		logging.debug("allocating the graph on the NCS...")
-		self._graph = self.device.AllocateGraph(graph_in_memory)
+		self._graph = self._device.AllocateGraph(graph_in_memory)
 
-	def preprocess_image(self, input_image):
+	def _preprocess_image(self, input_image):
 		# preprocess the image
 		preprocessed = cv2.resize(input_image, self.preprocessed_dimensions)
 		preprocessed = preprocessed - 127.5
@@ -61,7 +61,7 @@ class NCSObjectClassifier(object):
 
 	def get_confident_predictions(self, image):
 		# preprocess the image
-		image = self.preprocess_image(image)
+		image = self._preprocess_image(image)
 
 		# send the image to the NCS and run a forward pass to grab the
 		# network predictions
@@ -111,4 +111,4 @@ class NCSObjectClassifier(object):
 		# clean up the graph and device
 		self._graph.DeallocateGraph()
 		self.__class__.device.CloseDevice()
-		self.device = None
+		self._device = None
