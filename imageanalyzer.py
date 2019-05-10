@@ -26,8 +26,6 @@ INTERESTING_CLASSES = {"cat":2, "dog":2, "person":1, "car":3, "bicycle":3, "bird
 # This is the lowest confidence score that the classifier should return
 MININUM_CONSIDERED_CONFIDENCE = 0.5
 
-GRAPH_FILENAME = "ncs_detection/graphs/mobilenetgraph"
-
 class ProcessedFrame(object):
     def __init__(self, image, sequence_number, objects, interesting_object):
         self.image = image
@@ -215,6 +213,7 @@ class _EdgeTPUImageAnalyzer(ImageAnalyzer):
     pass
 
 class _NCSImageAnalyzer(ImageAnalyzer):
+    GRAPH_FILENAME = "ncs_detection/graphs/mobilenetgraph"
     PREPROCESS_DIMENSIONS = (300, 300)
     _X_ZONE_SIZE = PREPROCESS_DIMENSIONS[0] / X_ZONES
     _Y_ZONE_SIZE = PREPROCESS_DIMENSIONS[1] / Y_ZONES
