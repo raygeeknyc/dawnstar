@@ -165,7 +165,6 @@ class ImageAnalyzer(multiprocessing.Process):
 
         return (x, y)
 
-
     @staticmethod
     def object_center_zone(object):
         (_, box), _, _, _ = object
