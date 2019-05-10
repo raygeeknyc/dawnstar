@@ -76,9 +76,9 @@ class ImageAnalyzer(multiprocessing.Process):
 
     @staticmethod
     def zone_for_object(object):
-        center = center(object[0][1])
-        x_zone = (center[0] / _X_ZONE_SIZE) + (1 if center[0] % _X_ZONE_SIZE else 0)
-        y_zone = (center[1] / _Y_ZONE_SIZE) + (1 if center[1] % _Y_ZONE_SIZE else 0)
+        object_center = center(object[0][1])
+        x_zone = (object_center[0] / _X_ZONE_SIZE) + (1 if object_center[0] % _X_ZONE_SIZE else 0)
+        y_zone = (object_center[1] / _Y_ZONE_SIZE) + (1 if object_center[1] % _Y_ZONE_SIZE else 0)
         logging.debug("Box: {} Zone: {}, {}".format(object[0], x_zone, y_zone))
         return (x_zone, y_zone)
 
