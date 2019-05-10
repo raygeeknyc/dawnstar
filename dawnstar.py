@@ -166,8 +166,8 @@ class Dawnstar():
 	logging.debug("bounds: {}".format(self.tracked_bounds))
         self.tracked_objects = 1
         self.frame_sequence_number = frame.sequence_number
-	self.tracked_zone = ImageAnalyzer.object_center_zone(frame.interesting_object)
-	self.corrections_to_zone = ImageAnalyzer.object_corrections_to_center(frame.interesting_object)
+	self.tracked_zone = ImageAnalyzer.get_center_zone(frame.interesting_object)
+	self.corrections_to_zone = ImageAnalyzer.get_corrections_to_center(frame.interesting_object)
       else:
         self.tracked_objects = 0
 	self.tracked_zone = None

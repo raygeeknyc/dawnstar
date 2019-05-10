@@ -166,7 +166,15 @@ class ImageAnalyzer(multiprocessing.Process):
         return (x, y)
 
     @staticmethod
-    def object_center_zone(object):
+    def get_center_zone(object):
+        object_center = center(object[0][1])
+        x_zone = (object_center[0] / _X_ZONE_SIZE) + (1 if object_center[0] % _X_ZONE_SIZE else 0)
+        y_zone = (object_center[1] / _Y_ZONE_SIZE) + (1 if object_center[1] % _Y_ZONE_SIZE else 0)
+        logging.debug("Box: {} Zone: {}, {}".format(object[0], x_zone, y_zone))
+        return (x_zone, y_zone)
+
+    @staticmethod
+    def get_correction_to_center(object):
         (_, box), _, _, _ = object
         (x0, y0),(x1, y1) = box
         x_correction = 0
