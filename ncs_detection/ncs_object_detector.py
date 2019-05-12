@@ -110,5 +110,5 @@ class NCSObjectClassifier(object):
 	def cleanup(self):
 		# clean up the graph and device
 		self._graph.DeallocateGraph()
-		self.__class__.device.CloseDevice()
+		self._device.CloseDevice()
 		self._device = None

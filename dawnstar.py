@@ -160,7 +160,6 @@ class Dawnstar():
       self.frames += 1
       logging.debug("Frame[{}] received".format(self.frames))
       self.object_count = len(frame.objects)
-      (_, base_image),_ ,_ = frame
       if frame.interesting_object:
 	(_, self.tracked_bounds), _, self.tracked_area, self.tracked_generations = frame.interesting_object
 	logging.debug("bounds: {}".format(self.tracked_bounds))
@@ -176,7 +175,7 @@ class Dawnstar():
       for (processed_image, object) in enumerate(frame.objects):
         (object_class, _), object_confidence, _, tracked_generations = object
         logging.debug("Prediction class={}, confidence={}, age={}".format(object_class, object_confidence, tracked_generations))
-      debug_image = self._construct_info_image(base_image, frame.objects, frame.interesting_object)
+      debug_image = self._construct_info_image(frame.image, frame.objects, frame.interesting_object)
       self._write_frame_to_server(debug_image)
     logging.debug("Done consuming objects")
 

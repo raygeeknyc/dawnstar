@@ -74,11 +74,10 @@ class ImageAnalyzer(multiprocessing.Process):
         area = (box_point2[0] - box_point1[0]) * (box_point2[1] - box_point1[1])
         return max(0, area)
 
-    @staticmethod
-    def zone_for_object(object):
+    def zone_for_object(self, object):
         object_center = center(object[0][1])
-        x_zone = (object_center[0] / _X_ZONE_SIZE) + (1 if object_center[0] % _X_ZONE_SIZE else 0)
-        y_zone = (object_center[1] / _Y_ZONE_SIZE) + (1 if object_center[1] % _Y_ZONE_SIZE else 0)
+        x_zone = (object_center[0] / self.__class__._X_ZONE_SIZE) + (1 if object_center[0] % self.__class__._X_ZONE_SIZE else 0)
+        y_zone = (object_center[1] / self.__class__._Y_ZONE_SIZE) + (1 if object_center[1] % self.__class__._Y_ZONE_SIZE else 0)
         logging.debug("Box: {} Zone: {}, {}".format(object[0], x_zone, y_zone))
         return (x_zone, y_zone)
 
@@ -90,9 +89,9 @@ class ImageAnalyzer(multiprocessing.Process):
                 max(pred_1_box[0][1], pred_2_box[0][1])),
                 (max(pred_1_box[1][0], pred_2_box[1][0]),
                 max(pred_1_box[1][1], pred_2_box[1][1])))
-        overlap_area = ImageAnalyzer.area(overlap_region[0], overlap_region[1])
+        overlap = ImageAnalyzer.area(overlap_region[0], overlap_region[1])
 
-        return overlap_area
+        return overlap
 
     @staticmethod
     def area_ratio(prediction_1, prediction_2):
@@ -112,7 +111,7 @@ class ImageAnalyzer(multiprocessing.Process):
                 (secondary_class, secondary_box) = key_secondary
                 if secondary_class != primary_class:
                     continue
-                overlapping_area = overlap_area(prediction, potential_match)
+                overlapping_area = ImageAnalyzer.overlap_area(prediction, potential_match)
                 if overlapping_area:
                     eligible_matches[(key_primary, key_secondary)] = overlapping_area
         # At this point we have all possible matches and a score for each
@@ -165,7 +164,7 @@ class ImageAnalyzer(multiprocessing.Process):
 
     @staticmethod
     def get_center_zone(object):
-        object_center = center(object[0][1])
+        object_center = ImageAnalyzer.center(object[0][1])
         x_zone = (object_center[0] / _X_ZONE_SIZE) + (1 if object_center[0] % _X_ZONE_SIZE else 0)
         y_zone = (object_center[1] / _Y_ZONE_SIZE) + (1 if object_center[1] % _Y_ZONE_SIZE else 0)
         logging.debug("Box: {} Zone: {}, {}".format(object[0], x_zone, y_zone))
@@ -188,12 +187,12 @@ class ImageAnalyzer(multiprocessing.Process):
         prioritized_objects = {}
         for object in objects:
             (_class, _bound_box), _confidence, _, _ = object
-            if _class not in self.__class__.INTERESTING_CLASSES.keys():
+            if _class not in INTERESTING_CLASSES.keys():
                 continue
-            if self.INTERESTING_CLASSES[_class] not in prioritized_objects.keys():
-                prioritized_objects[self.__class__.INTERESTING_CLASSES[_class]] = [object]
+            if INTERESTING_CLASSES[_class] not in prioritized_objects.keys():
+                prioritized_objects[INTERESTING_CLASSES[_class]] = [object]
             else:
-                prioritized_objects[self.__class__.INTERESTING_CLASSES[_class]].append(object)
+                prioritized_objects[INTERESTING_CLASSES[_class]].append(object)
         if not prioritized_objects:
             return None
         highest_priority = sorted(prioritized_objects.keys())[0]
@@ -220,7 +219,7 @@ class _NCSImageAnalyzer(ImageAnalyzer):
     def __init__(self, event, image_queue, object_queue, log_queue, logging_level):
         super(_NCSImageAnalyzer, self).__init__(event, image_queue, object_queue, log_queue, logging_level)
 
-	self._classifier = NCSObjectClassifier(GRAPH_FILENAME, MININUM_CONSIDERED_CONFIDENCE, self.__class__.PREPROCESS_DIMENSIONS)
+	self._classifier = NCSObjectClassifier(self.__class__.GRAPH_FILENAME, MININUM_CONSIDERED_CONFIDENCE, self.__class__.PREPROCESS_DIMENSIONS)
 
     def _prediction_by_key(self, predictions, prediction_key):
         for prediction in predictions:
@@ -268,7 +267,7 @@ class _NCSImageAnalyzer(ImageAnalyzer):
         logging.debug("_previous_detected_objects : {}".format(self._previous_detected_objects))
 	self._apply_matches(persistent_object_keys, detected_objects, self._previous_detected_objects)
 	logging.debug("Objects: {}, previous: {}, matches: {}".format(len(detected_objects), len(self._previous_detected_objects), len(persistent_object_keys)))
-	interesting_object = self._class__.get_most_interesting_object(detected_objects)
+	interesting_object = self.__class__.get_most_interesting_object(detected_objects)
        	if not self._exit.is_set():
         	logging.debug("Queuing processed image {}".format(frame_number))
         	frame_envelope = (frame_number, image)
