@@ -74,10 +74,11 @@ class ImageAnalyzer(multiprocessing.Process):
         area = (box_point2[0] - box_point1[0]) * (box_point2[1] - box_point1[1])
         return max(0, area)
 
-    def zone_for_object(self, object):
+    @staticmethod
+    def zone_for_object(image, object):
         object_center = center(object[0][1])
-        x_zone = (object_center[0] / ImageAnalyzer.get_x_zone_size() + (1 if object_center[0] % ImageAnalyzer.get_x_zone_size( else 0)
-        y_zone = (object_center[1] / ImageAnalyzer.get_y_zone_size() + (1 if object_center[1] % ImageAnalyzer.get_y_zone_size(object) else 0)
+        x_zone = (object_center[0] / ImageAnalyzer.get_x_zone_size(image) + (1 if object_center[0] % ImageAnalyzer.get_x_zone_size(image) else 0)
+        y_zone = (object_center[1] / ImageAnalyzer.get_y_zone_size(image) + (1 if object_center[1] % ImageAnalyzer.get_y_zone_size(image) else 0)
         logging.debug("Box: {} Zone: {}, {}".format(object[0], x_zone, y_zone))
         return (x_zone, y_zone)
 
@@ -163,23 +164,23 @@ class ImageAnalyzer(multiprocessing.Process):
         return (x, y)
 
     @staticmethod
-    def get_center_zone(object):
+    def get_center_zone(image, object):
         object_center = ImageAnalyzer.center(object[0][1])
-        x_zone = (object_center[0] / ImageAnalyzer.get_x_zone_size(object)) + (1 if object_center[0] % ImageAnalyzer.get_x_zone_size(object) else 0)
-        y_zone = (object_center[1] / ImageAnalyzer.get_y_zone_size(object)) + (1 if object_center[1] % ImageAnalyzer.get_y_zone_size(object) else 0)
+        x_zone = (object_center[0] / ImageAnalyzer.get_x_zone_size(image)) + (1 if object_center[0] % ImageAnalyzer.get_x_zone_size(image) else 0)
+        y_zone = (object_center[1] / ImageAnalyzer.get_y_zone_size(image)) + (1 if object_center[1] % ImageAnalyzer.get_y_zone_size(image) else 0)
         logging.debug("Box: {} Zone: {}, {}".format(object[0], x_zone, y_zone))
         return (x_zone, y_zone)
 
     @staticmethod
-    def get_correction_to_center(object):
+    def get_correction_to_center(image, object):
         (_, box), _, _, _ = object
         (x0, y0),(x1, y1) = box
         x_correction = 0
         y_correction = 0
         for zone in range(0, X_ZONES):
-            x_correction += round(weight_of_zone_for_segment(x0, x1, zone, X_ZONES, ImageAnalyzer.get_x_zone_size(object)), 2)
+            x_correction += round(weight_of_zone_for_segment(x0, x1, zone, X_ZONES, ImageAnalyzer.get_x_zone_size(image)), 2)
         for zone in range(0, Y_ZONES):
-            y_correction += round(weight_of_zone_for_segment(y0, y1, zone, Y_ZONES, ImageAnalyzer.get_y_zone_size(object)), 2)
+            y_correction += round(weight_of_zone_for_segment(y0, y1, zone, Y_ZONES, ImageAnalyzer.get_y_zone_size(image)), 2)
         return (x_correction, y_correction)
 
     @staticmethod
