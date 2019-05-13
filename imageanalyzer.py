@@ -76,8 +76,8 @@ class ImageAnalyzer(multiprocessing.Process):
 
     def zone_for_object(self, object):
         object_center = center(object[0][1])
-        x_zone = (object_center[0] / self.__class__._X_ZONE_SIZE) + (1 if object_center[0] % self.__class__._X_ZONE_SIZE else 0)
-        y_zone = (object_center[1] / self.__class__._Y_ZONE_SIZE) + (1 if object_center[1] % self.__class__._Y_ZONE_SIZE else 0)
+        x_zone = (object_center[0] / ImageAnalyzer.get_x_zone_size() + (1 if object_center[0] % ImageAnalyzer.get_x_zone_size( else 0)
+        y_zone = (object_center[1] / ImageAnalyzer.get_y_zone_size() + (1 if object_center[1] % ImageAnalyzer.get_y_zone_size(object) else 0)
         logging.debug("Box: {} Zone: {}, {}".format(object[0], x_zone, y_zone))
         return (x_zone, y_zone)
 
@@ -165,8 +165,8 @@ class ImageAnalyzer(multiprocessing.Process):
     @staticmethod
     def get_center_zone(object):
         object_center = ImageAnalyzer.center(object[0][1])
-        x_zone = (object_center[0] / _X_ZONE_SIZE) + (1 if object_center[0] % _X_ZONE_SIZE else 0)
-        y_zone = (object_center[1] / _Y_ZONE_SIZE) + (1 if object_center[1] % _Y_ZONE_SIZE else 0)
+        x_zone = (object_center[0] / ImageAnalyzer.get_x_zone_size(object)) + (1 if object_center[0] % ImageAnalyzer.get_x_zone_size(object) else 0)
+        y_zone = (object_center[1] / ImageAnalyzer.get_y_zone_size(object)) + (1 if object_center[1] % ImageAnalyzer.get_y_zone_size(object) else 0)
         logging.debug("Box: {} Zone: {}, {}".format(object[0], x_zone, y_zone))
         return (x_zone, y_zone)
 
@@ -177,9 +177,9 @@ class ImageAnalyzer(multiprocessing.Process):
         x_correction = 0
         y_correction = 0
         for zone in range(0, X_ZONES):
-            x_correction += round(weight_of_zone_for_segment(x0, x1, zone, X_ZONES, _X_ZONE_SIZE), 2)
+            x_correction += round(weight_of_zone_for_segment(x0, x1, zone, X_ZONES, ImageAnalyzer.get_x_zone_size(object)), 2)
         for zone in range(0, Y_ZONES):
-            y_correction += round(weight_of_zone_for_segment(y0, y1, zone, Y_ZONES, _Y_ZONE_SIZE), 2)
+            y_correction += round(weight_of_zone_for_segment(y0, y1, zone, Y_ZONES, ImageAnalyzer.get_y_zone_size(object)), 2)
         return (x_correction, y_correction)
 
     @staticmethod
@@ -207,6 +207,14 @@ class ImageAnalyzer(multiprocessing.Process):
             return []
         return largest_object
 
+    @staticmethod
+    def get_x_zone_size(image):
+        return image.shape[1] / X_ZONES
+
+    @staticmethod
+    def get_y_zone_size(image):
+        return image.shape[0] / Y_ZONES
+
 
 class _EdgeTPUImageAnalyzer(ImageAnalyzer):
     pass
@@ -214,8 +222,6 @@ class _EdgeTPUImageAnalyzer(ImageAnalyzer):
 class _NCSImageAnalyzer(ImageAnalyzer):
     GRAPH_FILENAME = "ncs_detection/graphs/mobilenetgraph"
     PREPROCESS_DIMENSIONS = (300, 300)
-    _X_ZONE_SIZE = PREPROCESS_DIMENSIONS[0] / X_ZONES
-    _Y_ZONE_SIZE = PREPROCESS_DIMENSIONS[1] / Y_ZONES
     def __init__(self, event, image_queue, object_queue, log_queue, logging_level):
         super(_NCSImageAnalyzer, self).__init__(event, image_queue, object_queue, log_queue, logging_level)
 
