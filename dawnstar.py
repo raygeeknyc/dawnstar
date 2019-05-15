@@ -151,8 +151,6 @@ class Dawnstar():
     logging.debug("object consumer started")
     frame = None
     while not self._process_event.is_set():
-      if frame:
-        previous_detected_objects = frame.objects
       try:
         frame = self._object_queue.get(False)
       except Empty:

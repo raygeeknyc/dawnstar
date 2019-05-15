@@ -234,13 +234,6 @@ class _NCSImageAnalyzer(ImageAnalyzer):
                 return prediction
         return None
 
-    # TODO: Reintroduce generation tracking
-    # This method was moved and usage has been lost, it's orphaned but needed
-    @staticmethod
-    def apply_tracked_continuity(matched_predictions):
-        for primary, secondary in matched_predictions:
-            primary[4] += secondary[4]
-
     def _apply_matches(self, persistent_object_keys, predictions, previous_predictions):
         logging.debug("previous_predictions : {}".format(previous_predictions))
         for (current_prediction_key, previous_prediction_key) in persistent_object_keys:
@@ -271,7 +264,6 @@ class _NCSImageAnalyzer(ImageAnalyzer):
         logging.debug("_previous_detected_objects : {}".format(self._previous_detected_objects))
 	persistent_object_keys = self.__class__.rank_possible_matches(detected_objects, self._previous_detected_objects)
         logging.debug("Matches: {}".format(persistent_object_keys))
-        logging.debug("_previous_detected_objects : {}".format(self._previous_detected_objects))
 	self._apply_matches(persistent_object_keys, detected_objects, self._previous_detected_objects)
 	logging.debug("Objects: {}, previous: {}, matches: {}".format(len(detected_objects), len(self._previous_detected_objects), len(persistent_object_keys)))
 	interesting_object = self.__class__.get_most_interesting_object(detected_objects)
