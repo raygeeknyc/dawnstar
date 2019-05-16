@@ -1,5 +1,4 @@
 import logging
-
 from ncs_detection.ncs_object_detector import NCSObjectClassifier
 
 import multiprocessing
@@ -25,6 +24,13 @@ INTERESTING_CLASSES = {"cat":2, "dog":2, "person":1, "car":3, "bicycle":3, "bird
 
 # This is the lowest confidence score that the classifier should return
 MININUM_CONSIDERED_CONFIDENCE = 0.5
+
+class VisibleObject(object):
+    def __init__(self, class, bounding_box, confidence, generations_tracked):
+        self.class = class
+        self.confidence = confidence
+        self.generations_tracked = generations_tracked
+        self.object_area = self.area(bounding_box[0], bounding_box[1])
 
 class ProcessedFrame(object):
     def __init__(self, image, sequence_number, objects, interesting_object):
@@ -187,22 +193,20 @@ class ImageAnalyzer(multiprocessing.Process):
     def get_most_interesting_object(objects):
         prioritized_objects = {}
         for object in objects:
-            (_class, _bound_box), _confidence, _, _ = object
-            if _class not in INTERESTING_CLASSES.keys():
+            if object.class not in INTERESTING_CLASSES.keys():
                 continue
-            if INTERESTING_CLASSES[_class] not in prioritized_objects.keys():
-                prioritized_objects[INTERESTING_CLASSES[_class]] = [object]
+            if INTERESTING_CLASSES[object.class] not in prioritized_objects.keys():
+                prioritized_objects[INTERESTING_CLASSES[object.class] = [object]
             else:
-                prioritized_objects[INTERESTING_CLASSES[_class]].append(object)
+                prioritized_objects[INTERESTING_CLASSES[object.class].append(object)
         if not prioritized_objects:
             return None
         highest_priority = sorted(prioritized_objects.keys())[0]
         highest_priority_objects = prioritized_objects[highest_priority]
         max_area = 0
         for important_object in highest_priority_objects:
-            (_, _), _, area, _  = important_object
-            if area > max_area:
-                max_area = area
+            if important_object.object_area > max_area:
+                max_area = important_object.object_area
                 largest_object = important_object
         if max_area == 0:
             return []
@@ -251,9 +255,7 @@ class _NCSImageAnalyzer(ImageAnalyzer):
 	likely_objects = []
 	object_generations_tracked = 1
 	for prediction in confident_predictions:
-		object_bounds = prediction[1]
-		object_area = self.area(object_bounds[0], object_bounds[1])
-		likely_object = [(prediction[0], object_bounds), prediction[2], object_area, object_generations_tracked]
+		likely_object = VisibleObject(prediction[0], prediction[1], prediction[2], object_generations_tracked)
 		likely_objects.append(likely_object)
 	return likely_objects
 	
