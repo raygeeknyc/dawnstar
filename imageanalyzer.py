@@ -30,6 +30,7 @@ class VisibleObject(object):
         self.class = class
         self.confidence = confidence
         self.generations_tracked = generations_tracked
+        self.bounding_box = bounding_box
         self.object_area = self.area(bounding_box[0], bounding_box[1])
 
 class ProcessedFrame(object):
@@ -89,13 +90,11 @@ class ImageAnalyzer(multiprocessing.Process):
         return (x_zone, y_zone)
 
     @staticmethod
-    def overlap_area(prediction_1, prediction_2):
-        (_, pred_1_box), _, _, _ = prediction_1
-        (_, pred_2_box), _, _, _ = prediction_2
-        overlap_region = ((max(pred_1_box[0][0], pred_2_box[0][0]),
-                max(pred_1_box[0][1], pred_2_box[0][1])),
-                (max(pred_1_box[1][0], pred_2_box[1][0]),
-                max(pred_1_box[1][1], pred_2_box[1][1])))
+    def overlap_area(object_1, object_2):
+        overlap_region = ((max(object_1.bounding_box[0][0], object_2.bounding_box[0][0]),
+                max(object_1.bounding_box[0][1], object_2.bounding_box[0][1])),
+                (max(object_1.bounding_box[1][0], object_2.bounding_box[1][0]),
+                max(object_1.bounding_box[1][1], object_2.bounding_box[1][1])))
         overlap = ImageAnalyzer.area(overlap_region[0], overlap_region[1])
 
         return overlap
@@ -110,15 +109,13 @@ class ImageAnalyzer(multiprocessing.Process):
     @staticmethod
     def rank_possible_matches(primary_object_set, secondary_object_set):
         eligible_matches = dict()
-        for prediction in primary_object_set:
-            key_primary, _, _, _ = prediction
-            (primary_class, primary_box) = key_primary
-            for potential_match in secondary_object_set:
-                key_secondary, _, _, _ = potential_match
-                (secondary_class, secondary_box) = key_secondary
-                if secondary_class != primary_class:
+        for detected_object in primary_object_set:
+            key_primary = (detected_object.class, detected_object.bounding_box)
+            for potential_matching_object in secondary_object_set:
+                key_secondary = (potential_matching_object.class, potential_matching_object.bounding_box)
+                if potential_matching_object.class != detected_object.class:
                     continue
-                overlapping_area = ImageAnalyzer.overlap_area(prediction, potential_match)
+                overlapping_area = ImageAnalyzer.overlap_area(detected_object, potential_matching_object.class)
                 if overlapping_area:
                     eligible_matches[(key_primary, key_secondary)] = overlapping_area
         # At this point we have all possible matches and a score for each
