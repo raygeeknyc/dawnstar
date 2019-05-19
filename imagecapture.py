@@ -15,6 +15,8 @@ import os
 import time
 import signal
 import Queue
+import numpy
+import cv2
 
 # This is the desired resolution of the camera
 RESOLUTION = (320, 240)
@@ -171,12 +173,15 @@ class PiImageProducer(ImageProducer):
     self._camera.resolution = RESOLUTION
     self._camera.vflip = False
     self._camera.framerate = 32
-    self._raw_capture = PiRGBArray(self._camera)
+    self._image_buffer = io.BytesIO()
 
   def _get_frame(self):
-      self._raw_capture.truncate(0)
-      self._camera.capture(self._raw_capture, "rgb", use_video_port=True)
-      return self._raw_capture.array
+      self._camera.capture(self._image_buffer, format="jpeg", use_video_port=True)
+      self._image_buffer.seek(0)
+      data = numpy.fromstring(self._image_buffer.getvalue(), dtype=numpy.uint8)
+      image = cv2.imdecode(data, 1)
+      image = image[:, :, ::-1]
+      return image
 
   def _close_video(self):
       self._camera.close()

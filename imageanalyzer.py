@@ -26,12 +26,12 @@ INTERESTING_CLASSES = {"cat":2, "dog":2, "person":1, "car":3, "bicycle":3, "bird
 MININUM_CONSIDERED_CONFIDENCE = 0.5
 
 class VisibleObject(object):
-    def __init__(self, class, bounding_box, confidence, generations_tracked):
-        self.class = class
+    def __init__(self, object_class, bounding_box, confidence, generations_tracked):
+        self.object_class = object_class
         self.confidence = confidence
         self.generations_tracked = generations_tracked
         self.bounding_box = bounding_box
-        self.object_area = self.area(bounding_box[0], bounding_box[1])
+        self.object_area = ImageAnalyzer.area(bounding_box[0], bounding_box[1])
 
 class ProcessedFrame(object):
     def __init__(self, image, sequence_number, objects, interesting_object):
@@ -84,8 +84,8 @@ class ImageAnalyzer(multiprocessing.Process):
     @staticmethod
     def zone_for_object(image, object):
         object_center = center(object[0][1])
-        x_zone = (object_center[0] / ImageAnalyzer.get_x_zone_size(image) + (1 if object_center[0] % ImageAnalyzer.get_x_zone_size(image) else 0)
-        y_zone = (object_center[1] / ImageAnalyzer.get_y_zone_size(image) + (1 if object_center[1] % ImageAnalyzer.get_y_zone_size(image) else 0)
+        x_zone = (object_center[0] / ImageAnalyzer.get_x_zone_size(image) + (1 if object_center[0] % ImageAnalyzer.get_x_zone_size(image) else 0))
+        y_zone = (object_center[1] / ImageAnalyzer.get_y_zone_size(image) + (1 if object_center[1] % ImageAnalyzer.get_y_zone_size(image) else 0))
         logging.debug("Box: {} Zone: {}, {}".format(object[0], x_zone, y_zone))
         return (x_zone, y_zone)
 
@@ -110,12 +110,12 @@ class ImageAnalyzer(multiprocessing.Process):
     def rank_possible_matches(primary_object_set, secondary_object_set):
         eligible_matches = dict()
         for detected_object in primary_object_set:
-            key_primary = (detected_object.class, detected_object.bounding_box)
+            key_primary = (detected_object.object_class, detected_object.bounding_box)
             for potential_matching_object in secondary_object_set:
-                key_secondary = (potential_matching_object.class, potential_matching_object.bounding_box)
-                if potential_matching_object.class != detected_object.class:
+                key_secondary = (potential_matching_object.object_class, potential_matching_object.bounding_box)
+                if potential_matching_object.object_class != detected_object.object_class:
                     continue
-                overlapping_area = ImageAnalyzer.overlap_area(detected_object, potential_matching_object.class)
+                overlapping_area = ImageAnalyzer.overlap_area(detected_object, potential_matching_object)
                 if overlapping_area:
                     eligible_matches[(key_primary, key_secondary)] = overlapping_area
         # At this point we have all possible matches and a score for each
@@ -168,34 +168,33 @@ class ImageAnalyzer(multiprocessing.Process):
 
     @staticmethod
     def get_center_zone(image, object):
-        object_center = ImageAnalyzer.center(object[0][1])
+        object_center = ImageAnalyzer.center(object.bounding_box)
         x_zone = (object_center[0] / ImageAnalyzer.get_x_zone_size(image)) + (1 if object_center[0] % ImageAnalyzer.get_x_zone_size(image) else 0)
         y_zone = (object_center[1] / ImageAnalyzer.get_y_zone_size(image)) + (1 if object_center[1] % ImageAnalyzer.get_y_zone_size(image) else 0)
-        logging.debug("Box: {} Zone: {}, {}".format(object[0], x_zone, y_zone))
+        logging.debug("Box: {} Zone: {}, {}".format(object.bounding_box, x_zone, y_zone))
         return (x_zone, y_zone)
 
     @staticmethod
     def get_correction_to_center(image, object):
-        (_, box), _, _, _ = object
-        (x0, y0),(x1, y1) = box
+        (x0, y0),(x1, y1) = object.bounding_box
         x_correction = 0
         y_correction = 0
         for zone in range(0, X_ZONES):
-            x_correction += round(weight_of_zone_for_segment(x0, x1, zone, X_ZONES, ImageAnalyzer.get_x_zone_size(image)), 2)
+            x_correction += round(ImageAnalyzer.weight_of_zone_for_segment(x0, x1, zone, X_ZONES, ImageAnalyzer.get_x_zone_size(image)), 2)
         for zone in range(0, Y_ZONES):
-            y_correction += round(weight_of_zone_for_segment(y0, y1, zone, Y_ZONES, ImageAnalyzer.get_y_zone_size(image)), 2)
+            y_correction += round(ImageAnalyzer.weight_of_zone_for_segment(y0, y1, zone, Y_ZONES, ImageAnalyzer.get_y_zone_size(image)), 2)
         return (x_correction, y_correction)
 
     @staticmethod
     def get_most_interesting_object(objects):
         prioritized_objects = {}
         for object in objects:
-            if object.class not in INTERESTING_CLASSES.keys():
+            if object.object_class not in INTERESTING_CLASSES.keys():
                 continue
-            if INTERESTING_CLASSES[object.class] not in prioritized_objects.keys():
-                prioritized_objects[INTERESTING_CLASSES[object.class] = [object]
+            if INTERESTING_CLASSES[object.object_class] not in prioritized_objects.keys():
+                prioritized_objects[INTERESTING_CLASSES[object.object_class]] = [object]
             else:
-                prioritized_objects[INTERESTING_CLASSES[object.class].append(object)
+                prioritized_objects[INTERESTING_CLASSES[object.object_class]].append(object)
         if not prioritized_objects:
             return None
         highest_priority = sorted(prioritized_objects.keys())[0]
@@ -229,23 +228,23 @@ class _NCSImageAnalyzer(ImageAnalyzer):
 
 	self._classifier = NCSObjectClassifier(self.__class__.GRAPH_FILENAME, MININUM_CONSIDERED_CONFIDENCE, self.__class__.PREPROCESS_DIMENSIONS)
 
-    def _prediction_by_key(self, predictions, prediction_key):
-        for prediction in predictions:
-            if prediction[0] == prediction_key:
-                return prediction
+    def _object_by_key(self, objects, object_key):
+        for detected_object in objects:
+            if detected_object.object_class == object_key[0] and detected_object.bounding_box == object_key[1]:
+                return detected_object
         return None
 
     def _apply_matches(self, persistent_object_keys, predictions, previous_predictions):
         logging.debug("previous_predictions : {}".format(previous_predictions))
         for (current_prediction_key, previous_prediction_key) in persistent_object_keys:
             logging.debug("prev key: {}".format(previous_prediction_key))
-            previous_object = self._prediction_by_key(previous_predictions, previous_prediction_key)
+            previous_object = self._object_by_key(previous_predictions, previous_prediction_key)
             if not previous_object:
                 raise ValueError("Missing previous prediction")
-            current_object = self._prediction_by_key(predictions, current_prediction_key)
+            current_object = self._object_by_key(predictions, current_prediction_key)
             if not current_object:
                 raise ValueError("Missing current prediction")
-            current_object[3] += previous_object[3]
+            current_object.generations_tracked += previous_object.generations_tracked
 
     def _get_likely_objects(self, image):
 	confident_predictions = self._classifier.get_confident_predictions(image)
