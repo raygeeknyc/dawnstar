@@ -107,17 +107,17 @@ class ImageAnalyzer(multiprocessing.Process):
         return relative_size
 
     @staticmethod
-    def rank_possible_matches(primary_object_set, secondary_object_set):
+    def _rank_possible_matches(primary_object_set, secondary_object_set):
         eligible_matches = dict()
         for detected_object in primary_object_set:
             key_primary = (detected_object.object_class, detected_object.bounding_box)
             for potential_matching_object in secondary_object_set:
-                key_secondary = (potential_matching_object.object_class, potential_matching_object.bounding_box)
                 if potential_matching_object.object_class != detected_object.object_class:
                     continue
-                overlapping_area = ImageAnalyzer.overlap_area(detected_object, potential_matching_object)
-                if overlapping_area:
-                    eligible_matches[(key_primary, key_secondary)] = overlapping_area
+                overlapping_area_score = ImageAnalyzer.overlap_area(detected_object, potential_matching_object)
+                if overlapping_area_score:
+                    key_secondary = (potential_matching_object.object_class, potential_matching_object.bounding_box)
+                    eligible_matches[(key_primary, key_secondary)] = overlapping_area_score
         # At this point we have all possible matches and a score for each
         matched_primaries = []
         matched_secondaries = []
@@ -186,7 +186,7 @@ class ImageAnalyzer(multiprocessing.Process):
         return (x_correction, y_correction)
 
     @staticmethod
-    def get_most_interesting_object(objects):
+    def _get_most_interesting_object(objects):
         prioritized_objects = {}
         for object in objects:
             if object.object_class not in INTERESTING_CLASSES.keys():
@@ -257,14 +257,14 @@ class _NCSImageAnalyzer(ImageAnalyzer):
 	
     def _process_image(self, frame_number, image):
         logging.debug("Processing image {}".format(frame_number))
-	detected_objects = self._get_likely_objects(image)
+	aetected_objects = self._get_likely_objects(image)
         logging.debug("objects : {}".format(detected_objects))
         logging.debug("_previous_detected_objects : {}".format(self._previous_detected_objects))
-	persistent_object_keys = self.__class__.rank_possible_matches(detected_objects, self._previous_detected_objects)
+	persistent_object_keys = ImageAnalyzer._rank_possible_matches(detected_objects, self._previous_detected_objects)
         logging.debug("Matches: {}".format(persistent_object_keys))
 	self._apply_matches(persistent_object_keys, detected_objects, self._previous_detected_objects)
 	logging.debug("Objects: {}, previous: {}, matches: {}".format(len(detected_objects), len(self._previous_detected_objects), len(persistent_object_keys)))
-	interesting_object = self.__class__.get_most_interesting_object(detected_objects)
+	interesting_object = ImageAnalyzer._get_most_interesting_object(detected_objects)
        	if not self._exit.is_set():
         	logging.debug("Queuing processed image {}".format(frame_number))
         	frame_envelope = (frame_number, image)

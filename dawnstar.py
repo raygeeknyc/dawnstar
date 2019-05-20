@@ -43,7 +43,7 @@ class Dawnstar():
     self.tracked_objects = 0
     self.tracked_bounds = ((0,0),(0,0))
     self.tracked_area = 0
-    self.generations_tracked = 0
+    self.most_interesting_generations_tracked = 0
     self.object_count = 0
     self.tracked_zone = (0, 0)
     self.corrections_to_zone = None
@@ -73,7 +73,7 @@ class Dawnstar():
           logging.debug("Stop")
           self._ambulator.stop()
         else:
-          if self.generations_tracked < MIN_GENERATIONS_TO_CENTER:
+          if self.most_interesting_generations_tracked < MIN_GENERATIONS_TO_CENTER:
             logging.debug("Not turning yet")
           else:
             logging.debug("Turn")
@@ -110,7 +110,7 @@ class Dawnstar():
         info.ip = self.ip_address
         info.object_count = self.object_count
         info.tracked_objects = self.tracked_objects
-        info.generations_tracked = self.generations_tracked
+        info.generations_tracked = self.most_interesting_generations_tracked
         info.tracked_bounds = self.tracked_bounds
         info.tracked_zone = self.tracked_zone
         info.frames = self.frames
@@ -162,7 +162,7 @@ class Dawnstar():
         self.tracked_bounds = frame.interesting_object.bounding_box
 	logging.debug("bounds: {}".format(self.tracked_bounds))
         self.tracked_area = frame.interesting_object.object_area
-        self.generations_tracked = frame.interesting_object.generations_tracked
+        self.most_interesting_generations_tracked = frame.interesting_object.generations_tracked
 	self.tracked_zone = ImageAnalyzer.get_center_zone(frame.image, frame.interesting_object)
 	self.corrections_to_zone = ImageAnalyzer.get_correction_to_center(frame.image, frame.interesting_object)
       else:
@@ -171,7 +171,7 @@ class Dawnstar():
         self.frame_sequence_number = frame.sequence_number
 	self.corrections_to_zone = None
       for (processed_image, object) in enumerate(frame.objects):
-        logging.debug("Prediction class={}, confidence={}, age={}".format(object.object_class, object.confidence, object.generations_tracked))
+        logging.debug("Detected object class={}, confidence={}, age={}".format(object.object_class, object.confidence, object.generations_tracked))
       debug_image = self._construct_info_image(frame.image, frame.objects, frame.interesting_object)
       self._write_frame_to_server(debug_image)
     logging.debug("Done consuming objects")
