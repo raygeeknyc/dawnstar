@@ -25,7 +25,9 @@ INTERESTING_CLASSES = {"cat":2, "dog":2, "person":1, "car":3, "bicycle":3, "bird
 # This is the lowest confidence score that the classifier should return
 MININUM_CONSIDERED_CONFIDENCE = 0.5
 
+
 class VisibleObject(object):
+    "An object detected by our object detection engine."
     def __init__(self, object_class, bounding_box, confidence, generations_tracked):
         self.object_class = object_class
         self.confidence = confidence
@@ -33,7 +35,9 @@ class VisibleObject(object):
         self.bounding_box = bounding_box
         self.object_area = ImageAnalyzer.area(bounding_box[0], bounding_box[1])
 
+
 class ProcessedFrame(object):
+    "An image that has been processed by an ImageAnalyzer."
     def __init__(self, image, sequence_number, objects, interesting_object):
         self.image = image
         self.sequence_number = sequence_number
@@ -42,6 +46,7 @@ class ProcessedFrame(object):
 
 
 class ImageAnalyzer(multiprocessing.Process):
+    "The abstract Image Analyzer - subclasses should provide specific object detection and classification engines."
     UNKNOWN = 0
     NCS = 1
     TPU_ACCELERATOR = 2
@@ -54,6 +59,11 @@ class ImageAnalyzer(multiprocessing.Process):
             return _EdgeTPUImageAnalyzer(event, image_queue, object_queue, log_queue, logging_level)
         else:
             raise ValueError('Unknown Detection engine type {}'.format(engine))
+
+    def _init_logging(self):
+        handler = ChildMultiProcessingLogHandler(self._log_queue)
+        logging.getLogger(str(os.getpid())).addHandler(handler)
+        logging.getLogger(str(os.getpid())).setLevel(self._logging_level)
 
     def __init__(self, event, image_queue, object_queue, log_queue, logging_level):
         super(ImageAnalyzer, self).__init__()
@@ -216,18 +226,6 @@ class ImageAnalyzer(multiprocessing.Process):
     def get_y_zone_size(image):
         return image.shape[0] / Y_ZONES
 
-
-class _EdgeTPUImageAnalyzer(ImageAnalyzer):
-    pass
-
-class _NCSImageAnalyzer(ImageAnalyzer):
-    GRAPH_FILENAME = "ncs_detection/graphs/mobilenetgraph"
-    PREPROCESS_DIMENSIONS = (300, 300)
-    def __init__(self, event, image_queue, object_queue, log_queue, logging_level):
-        super(_NCSImageAnalyzer, self).__init__(event, image_queue, object_queue, log_queue, logging_level)
-
-	self._classifier = NCSObjectClassifier(self.__class__.GRAPH_FILENAME, MININUM_CONSIDERED_CONFIDENCE, self.__class__.PREPROCESS_DIMENSIONS)
-
     def _object_by_key(self, objects, object_key):
         for detected_object in objects:
             if detected_object.object_class == object_key[0] and detected_object.bounding_box == object_key[1]:
@@ -245,15 +243,6 @@ class _NCSImageAnalyzer(ImageAnalyzer):
             if not current_object:
                 raise ValueError("Missing current prediction")
             current_object.generations_tracked += previous_object.generations_tracked
-
-    def _get_likely_objects(self, image):
-	confident_predictions = self._classifier.get_confident_predictions(image)
-	likely_objects = []
-	object_generations_tracked = 1
-	for prediction in confident_predictions:
-		likely_object = VisibleObject(prediction[0], prediction[1], prediction[2], object_generations_tracked)
-		likely_objects.append(likely_object)
-	return likely_objects
 	
     def _process_image(self, frame_number, image):
         logging.debug("Processing image {}".format(frame_number))
@@ -294,11 +283,6 @@ class _NCSImageAnalyzer(ImageAnalyzer):
             except Exception, e:
                 logging.exception("error consuming images")
         logging.debug("Stopped image consumer")
- 
-    def _init_logging(self):
-        handler = ChildMultiProcessingLogHandler(self._log_queue)
-        logging.getLogger(str(os.getpid())).addHandler(handler)
-        logging.getLogger(str(os.getpid())).setLevel(self._logging_level)
 
     def run(self):
         self._init_logging()
@@ -310,3 +294,25 @@ class _NCSImageAnalyzer(ImageAnalyzer):
         finally:
             self._cleanup()
             logging.debug("Exiting image analyzer")
+
+
+class _EdgeTPUImageAnalyzer(ImageAnalyzer):
+    pass
+
+
+class _NCSImageAnalyzer(ImageAnalyzer):
+    GRAPH_FILENAME = "ncs_detection/graphs/mobilenetgraph"
+    PREPROCESS_DIMENSIONS = (300, 300)
+    def __init__(self, event, image_queue, object_queue, log_queue, logging_level):
+        super(_NCSImageAnalyzer, self).__init__(event, image_queue, object_queue, log_queue, logging_level)
+
+	self._classifier = NCSObjectClassifier(self.__class__.GRAPH_FILENAME, MININUM_CONSIDERED_CONFIDENCE, self.__class__.PREPROCESS_DIMENSIONS)
+
+    def _get_likely_objects(self, image):
+	confident_predictions = self._classifier.get_confident_predictions(image)
+	likely_objects = []
+	object_generations_tracked = 1
+	for prediction in confident_predictions:
+		likely_object = VisibleObject(prediction[0], prediction[1], prediction[2], object_generations_tracked)
+		likely_objects.append(likely_object)
+	return likely_objects
