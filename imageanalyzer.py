@@ -257,7 +257,7 @@ class _NCSImageAnalyzer(ImageAnalyzer):
 	
     def _process_image(self, frame_number, image):
         logging.debug("Processing image {}".format(frame_number))
-	aetected_objects = self._get_likely_objects(image)
+	detected_objects = self._get_likely_objects(image)
         logging.debug("objects : {}".format(detected_objects))
         logging.debug("_previous_detected_objects : {}".format(self._previous_detected_objects))
 	persistent_object_keys = ImageAnalyzer._rank_possible_matches(detected_objects, self._previous_detected_objects)
