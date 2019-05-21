@@ -26,6 +26,10 @@ INTERESTING_CLASSES = {"cat":2, "dog":2, "person":1, "car":3, "bicycle":3, "bird
 MININUM_CONSIDERED_CONFIDENCE = 0.5
 
 
+class NotImplementedError(Exception):
+    pass
+
+
 class VisibleObject(object):
     "An object detected by our object detection engine."
     def __init__(self, object_class, bounding_box, confidence, generations_tracked):
@@ -51,6 +55,10 @@ class ImageAnalyzer(multiprocessing.Process):
     NCS = 1
     TPU_ACCELERATOR = 2
     
+    def _get_likely_objects(self, image):
+        "This method should be implemented in a subclass."
+        raise NotImplementedError("Abstract method not overriden.")
+
     @staticmethod
     def create(detection_engine, event, image_queue, object_queue, log_queue, logging_level):
         if detection_engine == ImageAnalyzer.NCS:
@@ -108,13 +116,6 @@ class ImageAnalyzer(multiprocessing.Process):
         overlap = ImageAnalyzer.area(overlap_region[0], overlap_region[1])
 
         return overlap
-
-    @staticmethod
-    def area_ratio(prediction_1, prediction_2):
-        _, _, _, pred_1_area, _ = prediction_1
-        _, _, _, pred_2_area, _ = prediction_2
-        relative_size = max(pred_area_1, pred_area_2) / min(pred_area_1, pred_area_2)
-        return relative_size
 
     @staticmethod
     def _rank_possible_matches(primary_object_set, secondary_object_set):
@@ -226,22 +227,23 @@ class ImageAnalyzer(multiprocessing.Process):
     def get_y_zone_size(image):
         return image.shape[0] / Y_ZONES
 
-    def _object_by_key(self, objects, object_key):
+    @staticmethod
+    def _object_by_key(objects, object_key):
         for detected_object in objects:
             if detected_object.object_class == object_key[0] and detected_object.bounding_box == object_key[1]:
                 return detected_object
         return None
 
-    def _apply_matches(self, persistent_object_keys, predictions, previous_predictions):
-        logging.debug("previous_predictions : {}".format(previous_predictions))
-        for (current_prediction_key, previous_prediction_key) in persistent_object_keys:
-            logging.debug("prev key: {}".format(previous_prediction_key))
-            previous_object = self._object_by_key(previous_predictions, previous_prediction_key)
-            if not previous_object:
-                raise ValueError("Missing previous prediction")
-            current_object = self._object_by_key(predictions, current_prediction_key)
+    def _apply_tracking_to_matched_objects(self, persistent_object_keys, detected_objects, previous_detected_objects):
+        logging.debug("previous_detected_objects : {}".format(previous_detected_objects))
+        for (current_key, previous_key) in persistent_object_keys:
+            logging.debug("prev key: {}".format(previous_key))
+            previous_object = self._object_by_key(previous_detected_objects, previous_key)
+            if not previous_detected_object:
+                raise ValueError("Missing previous detected object")
+            current_object = self._object_by_key(detected_objects, current_key)
             if not current_object:
-                raise ValueError("Missing current prediction")
+                raise ValueError("Missing current detected object")
             current_object.generations_tracked += previous_object.generations_tracked
 	
     def _process_image(self, frame_number, image):
@@ -251,7 +253,7 @@ class ImageAnalyzer(multiprocessing.Process):
         logging.debug("_previous_detected_objects : {}".format(self._previous_detected_objects))
 	persistent_object_keys = ImageAnalyzer._rank_possible_matches(detected_objects, self._previous_detected_objects)
         logging.debug("Matches: {}".format(persistent_object_keys))
-	self._apply_matches(persistent_object_keys, detected_objects, self._previous_detected_objects)
+	self._apply_tracking_to_matched_objects(persistent_object_keys, detected_objects, self._previous_detected_objects)
 	logging.debug("Objects: {}, previous: {}, matches: {}".format(len(detected_objects), len(self._previous_detected_objects), len(persistent_object_keys)))
 	interesting_object = ImageAnalyzer._get_most_interesting_object(detected_objects)
        	if not self._exit.is_set():
