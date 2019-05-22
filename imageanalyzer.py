@@ -1,5 +1,6 @@
 import logging
-from ncs_detection.ncs_object_detector import NCSObjectClassifier
+from ncs_detection.object_detector import NCSObjectClassifier
+from edgetpu.object_detector import EdgeTPUObjectClassifier
 
 import multiprocessing
 from multiprocessingloghandler import ChildMultiProcessingLogHandler, ParentMultiProcessingLogHandler
@@ -298,10 +299,6 @@ class ImageAnalyzer(multiprocessing.Process):
             logging.debug("Exiting image analyzer")
 
 
-class _EdgeTPUImageAnalyzer(ImageAnalyzer):
-    pass
-
-
 class _NCSImageAnalyzer(ImageAnalyzer):
     GRAPH_FILENAME = "ncs_detection/graphs/mobilenetgraph"
     PREPROCESS_DIMENSIONS = (300, 300)
@@ -318,3 +315,7 @@ class _NCSImageAnalyzer(ImageAnalyzer):
 		likely_object = VisibleObject(prediction[0], prediction[1], prediction[2], object_generations_tracked)
 		likely_objects.append(likely_object)
 	return likely_objects
+
+
+class _EdgeTPUImageAnalyzer(ImageAnalyzer):
+    pass
