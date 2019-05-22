@@ -21,7 +21,7 @@ import cv2
 # This is the desired resolution of the camera
 RESOLUTION = (320, 240)
 # This is the desired maximum frame capture rate of the camera
-CAPTURE_RATE_FPS = 4.0
+CAPTURE_RATE_FPS = 5.0
 # This value was determined from over an observed covered camera's noise
 TRAINING_SAMPLES = 5
 # This is how much the green channel has to change to consider a pixel changed

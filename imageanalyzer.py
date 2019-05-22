@@ -239,7 +239,7 @@ class ImageAnalyzer(multiprocessing.Process):
         for (current_key, previous_key) in persistent_object_keys:
             logging.debug("prev key: {}".format(previous_key))
             previous_object = self._object_by_key(previous_detected_objects, previous_key)
-            if not previous_detected_object:
+            if not previous_object:
                 raise ValueError("Missing previous detected object")
             current_object = self._object_by_key(detected_objects, current_key)
             if not current_object:
