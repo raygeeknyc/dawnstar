@@ -1,6 +1,6 @@
 import logging
 from ncs_detection.object_detector import NCSObjectClassifier
-#from edgetpu.object_detector import EdgeTPUObjectClassifier
+from edgetpu.object_detector import EdgeTPUObjectClassifier
 
 import multiprocessing
 from multiprocessingloghandler import ChildMultiProcessingLogHandler, ParentMultiProcessingLogHandler
